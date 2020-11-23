@@ -53,6 +53,7 @@ def display_images(images, titles=None, cols=4, cmap=None, norm=None,
         plt.imshow(image.astype(np.uint8), cmap=cmap,
                    norm=norm, interpolation=interpolation)
         i += 1
+        plt.savefig("train{}.png".format(str(i)))
     plt.show()
 
 
@@ -162,7 +163,9 @@ def display_instances(image, boxes, masks, class_ids, class_names,
             verts = np.fliplr(verts) - 1
             p = Polygon(verts, facecolor="none", edgecolor=color)
             ax.add_patch(p)
+        plt.savefig("res{}.png".format(str(i)))
     ax.imshow(masked_image.astype(np.uint8))
+        
     if auto_show:
         plt.show()
 
