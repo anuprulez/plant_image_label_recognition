@@ -216,36 +216,35 @@ class ShapesDataset(utils.Dataset):
         shapes = [s for i, s in enumerate(shapes) if i in keep_ixs]
         return bg_color, shapes
         
-        
+num_tr_images = 10
+num_te_images = 1 
+   
 # Training dataset
 dataset_train = ShapesDataset()
-dataset_train.load_shapes(10, config.IMAGE_SHAPE[0], config.IMAGE_SHAPE[1])
+dataset_train.load_shapes(num_tr_images, config.IMAGE_SHAPE[0], config.IMAGE_SHAPE[1])
 dataset_train.prepare()
 
 # Validation dataset
 dataset_val = ShapesDataset()
-dataset_val.load_shapes(1, config.IMAGE_SHAPE[0], config.IMAGE_SHAPE[1])
+dataset_val.load_shapes(num_te_images, config.IMAGE_SHAPE[0], config.IMAGE_SHAPE[1])
 dataset_val.prepare()
 
 
 
 # Load and display random samples
-image_ids = np.random.choice(dataset_train.image_ids, 4)
+image_ids = np.random.choice(dataset_train.image_ids, num_tr_images)
 for image_id in image_ids:
     image = dataset_train.load_image(image_id)
     mask, class_ids = dataset_train.load_mask(image_id)
     visualize.display_top_masks(image, mask, class_ids, dataset_train.class_names)
-    
-    
-    
+   
 # Create model in training mode
 model = modellib.MaskRCNN(mode="training", config=config,
                           model_dir=MODEL_DIR)
                           
                           
-
 # Which weights to start with?
-init_with = "coco"  # imagenet, coco, or last
+#init_with = "coco"  # imagenet, coco, or last
 
 '''if init_with == "imagenet":
     model.load_weights(model.get_imagenet_weights(), by_name=True)
@@ -277,12 +276,11 @@ print("Training all, fine tuning...")
 # train by name pattern.
 model.train(dataset_train, dataset_val, 
             learning_rate=config.LEARNING_RATE / 10,
-            epochs=2, 
+            epochs=1, 
             layers="all")
             
             
-            
-            
+# Compute precision
 class InferenceConfig(ShapesConfig):
     GPU_COUNT = 1
     IMAGES_PER_GPU = 1
@@ -303,30 +301,13 @@ model_path = model.find_last()
 print("Loading weights from ", model_path)
 model.load_weights(model_path, by_name=True)
 
-
-# Test on a random image
-image_id = random.choice(dataset_val.image_ids)
-original_image, image_meta, gt_class_id, gt_bbox, gt_mask =\
-    modellib.load_image_gt(dataset_val, inference_config, 
-                           image_id, use_mini_mask=False)
-
-log("original_image", original_image)
-log("image_meta", image_meta)
-log("gt_class_id", gt_class_id)
-log("gt_bbox", gt_bbox)
-log("gt_mask", gt_mask)
-
-#visualize.display_instances(original_image, gt_bbox, gt_mask, gt_class_id, dataset_train.class_names, figsize=(8, 8))
-
+# Predict objects
 results = model.detect([original_image], verbose=1)
-
 r = results[0]
-visualize.display_instances(original_image, r['rois'], r['masks'], r['class_ids'], 
-                            dataset_val.class_names, r['scores'], ax=get_ax())
 
 # Compute VOC-Style mAP @ IoU=0.5
 # Running on 10 images. Increase for better accuracy.
-image_ids = np.random.choice(dataset_val.image_ids, 2)
+image_ids = np.random.choice(dataset_val.image_ids, 5)
 APs = []
 for image_id in image_ids:
     # Load image and ground truth data
