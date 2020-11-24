@@ -36,6 +36,8 @@ class InferenceConfig(learn_objects.ShapesConfig):
 
 inference_config = InferenceConfig()
 
+print("Creating a model...")
+
 # Recreate the model in inference mode
 model = modellib.MaskRCNN(mode="inference", 
                           config=inference_config,
@@ -55,6 +57,7 @@ dataset_val = learn_objects.ShapesDataset()
 dataset_val.load_shapes(1, config.IMAGE_SHAPE[0], config.IMAGE_SHAPE[1])
 dataset_val.prepare()
 
+print("Choosing a random test image...")
 
 # Test on a random image
 image_id = random.choice(dataset_val.image_ids)
@@ -72,8 +75,11 @@ log("gt_mask", gt_mask)
 
 #visualize.display_instances(original_image, gt_bbox, gt_mask, gt_class_id, dataset_train.class_names, figsize=(8, 8))
 
+print("Detecting objects...")
+
 results = model.detect([original_image], verbose=1)
 
+print("Displaying objects...")
 r = results[0]
 visualize.display_instances(original_image, r['rois'], r['masks'], r['class_ids'], 
                             dataset_val.class_names, r['scores'], ax=get_ax())
