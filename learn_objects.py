@@ -68,10 +68,10 @@ class ShapesConfig(Config):
     TRAIN_ROIS_PER_IMAGE = 32
 
     # Use a small epoch since the data is simple
-    STEPS_PER_EPOCH = 1
+    STEPS_PER_EPOCH = 25
 
     # use small validation steps since the epoch is small
-    VALIDATION_STEPS = 1
+    VALIDATION_STEPS = 5
     
 config = ShapesConfig()
 #config.display()
@@ -218,8 +218,8 @@ class ShapesDataset(utils.Dataset):
         
         
 # Training dataset
-n_tr_images = 10
-n_te_images = 1
+n_tr_images = 500
+n_te_images = 50
 dataset_train = ShapesDataset()
 dataset_train.load_shapes(n_tr_images, config.IMAGE_SHAPE[0], config.IMAGE_SHAPE[1])
 dataset_train.prepare()
@@ -275,7 +275,7 @@ print("Training all, fine tuning...")
 # train by name pattern.
 model.train(dataset_train, dataset_val, 
             learning_rate=config.LEARNING_RATE / 10,
-            epochs=1, 
+            epochs=2, 
             layers="all")
             
  
