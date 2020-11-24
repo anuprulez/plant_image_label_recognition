@@ -30,6 +30,18 @@ import learn_objects
 MODEL_DIR = os.path.join(ROOT_DIR, "logs")
 
 
+def get_ax(rows=1, cols=1, size=8):
+    """Return a Matplotlib Axes array to be used in
+    all visualizations in the notebook. Provide a
+    central point to control graph sizes.
+    
+    Change the default size attribute to control the size
+    of rendered images
+    """
+    _, ax = plt.subplots(rows, cols, figsize=(size*cols, size*rows))
+    return ax
+
+
 class InferenceConfig(learn_objects.ShapesConfig):
     GPU_COUNT = 1
     IMAGES_PER_GPU = 1
