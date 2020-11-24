@@ -302,8 +302,6 @@ print("Loading weights from ", model_path)
 model.load_weights(model_path, by_name=True)
 
 
-
-
 # Test on a random image
 image_id = random.choice(dataset_val.image_ids)
 original_image, image_meta, gt_class_id, gt_bbox, gt_mask =\
@@ -318,15 +316,13 @@ log("gt_mask", gt_mask)
 
 visualize.display_instances(original_image, gt_bbox, gt_mask, gt_class_id, 
                             dataset_train.class_names, figsize=(8, 8))
-                            
-                            
+
 results = model.detect([original_image], verbose=1)
 
 r = results[0]
 visualize.display_instances(original_image, r['rois'], r['masks'], r['class_ids'], 
                             dataset_val.class_names, r['scores'], ax=get_ax())
-                            
-                            
+
 # Compute VOC-Style mAP @ IoU=0.5
 # Running on 10 images. Increase for better accuracy.
 image_ids = np.random.choice(dataset_val.image_ids, 2)
