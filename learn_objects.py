@@ -216,28 +216,27 @@ class ShapesDataset(utils.Dataset):
         shapes = [s for i, s in enumerate(shapes) if i in keep_ixs]
         return bg_color, shapes
         
-num_tr_images = 10
-num_te_images = 1 
-   
+        
 # Training dataset
+n_tr_images = 10
+n_te_images = 1
 dataset_train = ShapesDataset()
-dataset_train.load_shapes(num_tr_images, config.IMAGE_SHAPE[0], config.IMAGE_SHAPE[1])
+dataset_train.load_shapes(n_tr_images, config.IMAGE_SHAPE[0], config.IMAGE_SHAPE[1])
 dataset_train.prepare()
 
 # Validation dataset
 dataset_val = ShapesDataset()
-dataset_val.load_shapes(num_te_images, config.IMAGE_SHAPE[0], config.IMAGE_SHAPE[1])
+dataset_val.load_shapes(n_te_images, config.IMAGE_SHAPE[0], config.IMAGE_SHAPE[1])
 dataset_val.prepare()
 
 
-
 # Load and display random samples
-image_ids = np.random.choice(dataset_train.image_ids, num_tr_images)
+image_ids = np.random.choice(dataset_train.image_ids, n_tr_images)
 for image_id in image_ids:
     image = dataset_train.load_image(image_id)
     mask, class_ids = dataset_train.load_mask(image_id)
     visualize.display_top_masks(image, mask, class_ids, dataset_train.class_names)
-   
+
 # Create model in training mode
 model = modellib.MaskRCNN(mode="training", config=config,
                           model_dir=MODEL_DIR)
@@ -279,8 +278,7 @@ model.train(dataset_train, dataset_val,
             epochs=1, 
             layers="all")
             
-            
-# Compute precision
+ 
 class InferenceConfig(ShapesConfig):
     GPU_COUNT = 1
     IMAGES_PER_GPU = 1
@@ -301,14 +299,11 @@ model_path = model.find_last()
 print("Loading weights from ", model_path)
 model.load_weights(model_path, by_name=True)
 
-# Predict objects
-results = model.detect([original_image], verbose=1)
-r = results[0]
-
 # Compute VOC-Style mAP @ IoU=0.5
 # Running on 10 images. Increase for better accuracy.
-image_ids = np.random.choice(dataset_val.image_ids, 5)
+image_ids = np.random.choice(dataset_val.image_ids, n_te_images)
 APs = []
+print("Computing precision...")
 for image_id in image_ids:
     # Load image and ground truth data
     image, image_meta, gt_class_id, gt_bbox, gt_mask =\
