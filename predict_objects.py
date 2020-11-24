@@ -30,7 +30,7 @@ import learn_objects
 MODEL_DIR = os.path.join(ROOT_DIR, "logs")
 
 
-class InferenceConfig(ShapesConfig):
+class InferenceConfig(learn_objects.ShapesConfig):
     GPU_COUNT = 1
     IMAGES_PER_GPU = 1
 
@@ -58,6 +58,7 @@ dataset_val.prepare()
 
 # Test on a random image
 image_id = random.choice(dataset_val.image_ids)
+
 original_image, image_meta, gt_class_id, gt_bbox, gt_mask =\
     modellib.load_image_gt(dataset_val, inference_config, 
                            image_id, use_mini_mask=False)
