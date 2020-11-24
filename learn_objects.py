@@ -68,10 +68,10 @@ class ShapesConfig(Config):
     TRAIN_ROIS_PER_IMAGE = 32
 
     # Use a small epoch since the data is simple
-    STEPS_PER_EPOCH = 1
+    STEPS_PER_EPOCH = 20
 
     # use small validation steps since the epoch is small
-    VALIDATION_STEPS = 1
+    VALIDATION_STEPS = 3
     
 config = ShapesConfig()
 config.display()
@@ -264,11 +264,13 @@ elif init_with == "last":
 # Passing layers="heads" freezes all layers except the head
 # layers. You can also pass a regular expression to select
 # which layers to train by name pattern.
+print("Training heads...")
 model.train(dataset_train, dataset_val, 
             learning_rate=config.LEARNING_RATE, 
             epochs=1, 
             layers='heads')
-            
+  
+print("Training all, fine tuning...")          
 # Fine tune all layers
 # Passing layers="all" trains all layers. You can also 
 # pass a regular expression to select which layers to
@@ -281,7 +283,7 @@ model.train(dataset_train, dataset_val,
             
             
             
-class InferenceConfig(ShapesConfig):
+'''class InferenceConfig(ShapesConfig):
     GPU_COUNT = 1
     IMAGES_PER_GPU = 1
 
@@ -342,4 +344,4 @@ for image_id in image_ids:
                          r["rois"], r["class_ids"], r["scores"], r['masks'])
     APs.append(AP)
     
-print("mAP: ", np.mean(APs))
+print("mAP: ", np.mean(APs))'''

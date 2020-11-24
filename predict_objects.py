@@ -219,7 +219,7 @@ model = modellib.MaskRCNN(mode="inference",
 # Get path to saved weights
 # Either set a specific path or find last trained weights
 # model_path = os.path.join(ROOT_DIR, ".h5 file name here")
-model_path = model.find_last() 
+model_path = "/home/kumara/image_segmentation_plants/plant_image_label_recognition/mrcnn/logs/shapes20201124T1026/mask_rcnn_shapes_0002.h5" #model.find_last() 
 #"/home/ubuntu/data/plants_image/plant_image_label_recognition/mrcnn/logs/shapes20201123T2239/mask_rcnn_shapes_0002.h5" #model.find_last()
 
 # Load trained weights
@@ -246,6 +246,8 @@ log("gt_class_id", gt_class_id)
 log("gt_bbox", gt_bbox)
 log("gt_mask", gt_mask)
 
+plt.imshow(original_image)
+
 
 #visualize.display_instances(original_image, gt_bbox, gt_mask, gt_class_id, dataset_train.class_names, figsize=(8, 8))
 
@@ -253,7 +255,9 @@ print("Detecting objects...")
 
 results = model.detect([original_image], verbose=1)
 
+#print(results)
+
 print("Displaying objects...")
 r = results[0]
 visualize.display_instances(original_image, r['rois'], r['masks'], r['class_ids'], 
-                            dataset_val.class_names, r['scores'], ax=get_ax())
+                            dataset_val.class_names, r['scores'], figsize=(8, 8)) #ax=get_ax()
