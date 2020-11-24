@@ -283,7 +283,7 @@ model.train(dataset_train, dataset_val,
             
             
             
-'''class InferenceConfig(ShapesConfig):
+class InferenceConfig(ShapesConfig):
     GPU_COUNT = 1
     IMAGES_PER_GPU = 1
 
@@ -344,4 +344,4 @@ for image_id in image_ids:
                          r["rois"], r["class_ids"], r["scores"], r['masks'])
     APs.append(AP)
     
-print("mAP: ", np.mean(APs))'''
+print("mAP: ", np.mean(APs))
