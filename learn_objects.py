@@ -74,7 +74,7 @@ class ShapesConfig(Config):
     VALIDATION_STEPS = 3
     
 config = ShapesConfig()
-config.display()
+#config.display()
 
 
 def get_ax(rows=1, cols=1, size=8):
