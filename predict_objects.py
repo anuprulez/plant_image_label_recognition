@@ -70,8 +70,7 @@ log("gt_bbox", gt_bbox)
 log("gt_mask", gt_mask)
 
 
-visualize.display_instances(original_image, gt_bbox, gt_mask, gt_class_id, 
-                            dataset_train.class_names, figsize=(8, 8))
+#visualize.display_instances(original_image, gt_bbox, gt_mask, gt_class_id, dataset_train.class_names, figsize=(8, 8))
 
 results = model.detect([original_image], verbose=1)
 
