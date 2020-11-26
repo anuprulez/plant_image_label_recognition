@@ -243,9 +243,9 @@ model = modellib.MaskRCNN(mode="training", config=config,
                           
                           
 # Which weights to start with?
-#init_with = "coco"  # imagenet, coco, or last
+init_with = "coco"  # imagenet, coco, or last
 
-'''if init_with == "imagenet":
+if init_with == "imagenet":
     model.load_weights(model.get_imagenet_weights(), by_name=True)
 elif init_with == "coco":
     # Load weights trained on MS COCO, but skip layers that
@@ -256,7 +256,7 @@ elif init_with == "coco":
                                 "mrcnn_bbox", "mrcnn_mask"])
 elif init_with == "last":
     # Load the last model you trained and continue training
-    model.load_weights(model.find_last(), by_name=True)'''
+    model.load_weights(model.find_last(), by_name=True)
     
 # Train the head branches
 # Passing layers="heads" freezes all layers except the head
@@ -279,7 +279,7 @@ model.train(dataset_train, dataset_val,
             layers="all")
             
  
-class InferenceConfig(ShapesConfig):
+'''class InferenceConfig(ShapesConfig):
     GPU_COUNT = 1
     IMAGES_PER_GPU = 1
 
@@ -319,4 +319,4 @@ for image_id in image_ids:
                          r["rois"], r["class_ids"], r["scores"], r['masks'])
     APs.append(AP)
     
-print("mAP: ", np.mean(APs))
+print("mAP: ", np.mean(APs))'''
