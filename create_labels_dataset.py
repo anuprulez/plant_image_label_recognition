@@ -78,6 +78,8 @@ class LabelsConfig(Config):
     N_TR_IMAGES = 3
     N_TE_IMAGES = 5
     
+    IMAGE_CHANNEL_COUNT = 3
+    
     
 
 class LabelsDataset(utils.Dataset):
@@ -139,20 +141,26 @@ class LabelsDataset(utils.Dataset):
        
 config = LabelsConfig()
 
+width = 128
+height = 128
+
+
 tr_dataset = LabelsDataset()
-tr_dataset.load_labels(TR_IMAGE_DIR, config.N_TR_IMAGES, config.IMAGE_SHAPE[0], IMAGE_SHAPE[1])
+tr_dataset.load_labels(TE_IMAGE_DIR, config.N_TE_IMAGES, width, height)
 tr_dataset.prepare()
 
+
 te_dataset = LabelsDataset()
-te_dataset.load_labels(TE_IMAGE_DIR, config.N_TE_IMAGES, config.IMAGE_SHAPE[0], IMAGE_SHAPE[1])
+te_dataset.load_labels(TE_IMAGE_DIR, config.N_TE_IMAGES, width, height)
 te_dataset.prepare()
 
 
-image_ids = np.random.choice(tr_dataset.image_ids, config.N_TR_IMAGES)
-for image_id in image_ids:
+image_ids = np.random.choice(te_dataset.image_ids, config.N_TE_IMAGES)
+
+'''for image_id in image_ids:
     image = tr_dataset.load_image(image_id)
     mask, class_ids = tr_dataset.load_mask(image_id)
-    #visualize.display_top_masks(image, mask, class_ids, tr_dataset.class_names)
+    visualize.display_top_masks(image, mask, class_ids, tr_dataset.class_names)'''
 
 ################# Train model
 
@@ -179,7 +187,7 @@ elif init_with == "last":
 # layers. You can also pass a regular expression to select
 # which layers to train by name pattern.
 print("Training heads...")
-model.train(tr_dataset, te_dataset, 
+model.train(tr_dataset, tr_dataset, 
             learning_rate=config.LEARNING_RATE, 
             epochs=1, 
             layers='heads')
