@@ -55,7 +55,7 @@ class LabelsConfig(Config):
     IMAGES_PER_GPU = 8
 
     # Number of classes (including background)
-    NUM_CLASSES = 1 + 1 # background + 3 shapes
+    NUM_CLASSES = 1 + 1 # background + 1 shape
 
     # Use small images for faster training. Set the limits of the small side
     # the large side, and that determines the image shape.
@@ -93,12 +93,15 @@ class LabelsDataset(utils.Dataset):
         """
         file_names = glob.glob(image_dir + "*.jpg")
         # Add classes
-        self.add_class("labels", 1, "rectangle")
+        self.add_class("labels", 1, "square")
         for i, img in enumerate(file_names):
             image = cv2.imread(img, 0)
+            #resized_image = cv2.resize(image, (width, height))
             shape = image.shape
-            
-            self.add_image("labels", image_id=i, path=img, width=width, height=height)
+            w = shape[0]
+            h = shape[1]
+            shapes = self.random_image(w, h)
+            self.add_image("labels", image_id=i, path=img, width=w, height=h, shapes=shapes)
             if i > count_images:
                 break
 
@@ -110,13 +113,14 @@ class LabelsDataset(utils.Dataset):
         """
         info = self.image_info[image_id]
         image = cv2.imread(info["path"], 0)
+        #resized_image = cv2.resize(image, (info["width"], info["height"]))
         return image
         
     def image_reference(self, image_id):
         """Return the label data of the image."""
         info = self.image_info[image_id]
         if info["source"] == "labels":
-            return info["labels"]
+            return info["shapes"]
         else:
             super(self.__class__).image_reference(self, image_id)
         
@@ -124,20 +128,63 @@ class LabelsDataset(utils.Dataset):
         """Generate instance masks for shapes of the given image ID.
         """
         info = self.image_info[image_id]
-        #labels = #[(1,'rectangle')] #info['labels']
-        count = 1 #len(labels)
+        shapes = info['shapes']
+        count = len(shapes)
         mask = np.zeros([info['height'], info['width'], count], dtype=np.uint8)
-        '''for i, (shape, _, dims) in enumerate(info['shapes']):
-            mask[:, :, i:i+1] = self.draw_shape(mask[:, :, i:i+1].copy(),
-                                                shape, dims, 1)'''
+        for i, (shape, dims) in enumerate(info['shapes']):
+            mask[:, :, i:i+1] = mask[:, :, i:i+1].copy() #self.draw_shape(mask[:, :, i:i+1].copy(), shape, dims, 1)
         # Handle occlusions
         occlusion = np.logical_not(mask[:, :, -1]).astype(np.uint8)
         for i in range(count-2, -1, -1):
             mask[:, :, i] = mask[:, :, i] * occlusion
             occlusion = np.logical_and(occlusion, np.logical_not(mask[:, :, i]))
         # Map class names to class IDs.
-        class_ids = np.array([1]) #np.array([self.class_names.index(s[0]) for s in labels])
+        class_ids = np.array([self.class_names.index(s[0]) for s in shapes])
         return mask.astype(np.bool), class_ids.astype(np.int32)
+        
+    def random_shape(self, height, width):
+        """Generates specifications of a random shape that lies within
+        the given height and width boundaries.
+        Returns a tuple of three valus:
+        * The shape name (square, circle, ...)
+        * Shape color: a tuple of 3 values, RGB.
+        * Shape dimensions: A tuple of values that define the shape size
+                            and location. Differs per shape type.
+        """
+        # Shape
+        shape = "square"
+        # Color
+        #color = tuple([random.randint(0, 255) for _ in range(3)])
+        # Center x, y
+        buffer = 20
+        y = random.randint(buffer, height - buffer - 1)
+        x = random.randint(buffer, width - buffer - 1)
+        # Size
+        s = random.randint(buffer, height//4)
+        return shape, (x, y, s)
+           
+    def random_image(self, height, width):
+        """Creates random specifications of an image with multiple shapes.
+        Returns the background color of the image and a list of shape
+        specifications that can be used to draw the image.
+        """
+        # Pick random background color
+        #bg_color = np.array([random.randint(0, 255) for _ in range(3)])
+        # Generate a few random shapes and record their
+        # bounding boxes
+        shapes = []
+        boxes = []
+        N = 1 #random.randint(1, 4)
+        #for _ in range(N):
+        shape, dims = self.random_shape(height, width)
+        shapes.append((shape, dims))
+        x, y, s = dims
+        boxes.append([y-s, x-s, y+s, x+s])
+        # Apply non-max suppression wit 0.3 threshold to avoid
+        # shapes covering each other
+        keep_ixs = utils.non_max_suppression(np.array(boxes), np.arange(N), 0.3)
+        shapes = [s for i, s in enumerate(shapes) if i in keep_ixs]
+        return shapes
        
 config = LabelsConfig()
 
@@ -146,7 +193,7 @@ height = 128
 
 
 tr_dataset = LabelsDataset()
-tr_dataset.load_labels(TE_IMAGE_DIR, config.N_TE_IMAGES, width, height)
+tr_dataset.load_labels(TR_IMAGE_DIR, config.N_TR_IMAGES, width, height)
 tr_dataset.prepare()
 
 
@@ -155,7 +202,7 @@ te_dataset.load_labels(TE_IMAGE_DIR, config.N_TE_IMAGES, width, height)
 te_dataset.prepare()
 
 
-image_ids = np.random.choice(te_dataset.image_ids, config.N_TE_IMAGES)
+image_ids = np.random.choice(tr_dataset.image_ids, config.N_TR_IMAGES)
 
 '''for image_id in image_ids:
     image = tr_dataset.load_image(image_id)
@@ -167,7 +214,7 @@ image_ids = np.random.choice(te_dataset.image_ids, config.N_TE_IMAGES)
 model = modellib.MaskRCNN(mode="training", config=config,
                           model_dir=MODEL_DIR)
 
-init_with = "coco"  # imagenet, coco, or last
+'''init_with = "coco"  # imagenet, coco, or last
 
 if init_with == "imagenet":
     model.load_weights(model.get_imagenet_weights(), by_name=True)
@@ -180,16 +227,16 @@ elif init_with == "coco":
                                 "mrcnn_bbox", "mrcnn_mask"])
 elif init_with == "last":
     # Load the last model you trained and continue training
-    model.load_weights(model.find_last(), by_name=True)
+    model.load_weights(model.find_last(), by_name=True)'''
 
 # Train the head branches
 # Passing layers="heads" freezes all layers except the head
 # layers. You can also pass a regular expression to select
 # which layers to train by name pattern.
 print("Training heads...")
-model.train(tr_dataset, tr_dataset, 
+model.train(tr_dataset, te_dataset, 
             learning_rate=config.LEARNING_RATE, 
-            epochs=1, 
+            epochs=1,
             layers='heads')
 
 print("Training all, fine tuning...")          
