@@ -29,8 +29,8 @@ else:
     print("File present")
 
 # Directory of images to run detection on
-TR_IMAGE_DIR = "data/crops/martius/"
-TE_IMAGE_DIR = "data/full_images/"
+TR_IMAGE_DIR = "data/crops/martius/tr/"
+TE_IMAGE_DIR = "data/crops/martius/val/"
 
 # Import Mask RCNN
 sys.path.append(ROOT_DIR)  # To find local version of the library
@@ -70,13 +70,13 @@ class LabelsConfig(Config):
     TRAIN_ROIS_PER_IMAGE = 32
 
     # Use a small epoch since the data is simple
-    STEPS_PER_EPOCH = 20
+    STEPS_PER_EPOCH = 5
 
     # use small validation steps since the epoch is small
     VALIDATION_STEPS = 1
     
-    N_TR_IMAGES = 3
-    N_TE_IMAGES = 5
+    N_TR_IMAGES = 5
+    N_TE_IMAGES = 2
     
     IMAGE_CHANNEL_COUNT = 3
     
@@ -214,7 +214,7 @@ image_ids = np.random.choice(tr_dataset.image_ids, config.N_TR_IMAGES)
 model = modellib.MaskRCNN(mode="training", config=config,
                           model_dir=MODEL_DIR)
 
-'''init_with = "coco"  # imagenet, coco, or last
+init_with = "coco"  # imagenet, coco, or last
 
 if init_with == "imagenet":
     model.load_weights(model.get_imagenet_weights(), by_name=True)
@@ -227,7 +227,7 @@ elif init_with == "coco":
                                 "mrcnn_bbox", "mrcnn_mask"])
 elif init_with == "last":
     # Load the last model you trained and continue training
-    model.load_weights(model.find_last(), by_name=True)'''
+    model.load_weights(model.find_last(), by_name=True)
 
 # Train the head branches
 # Passing layers="heads" freezes all layers except the head
