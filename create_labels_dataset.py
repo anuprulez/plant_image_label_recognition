@@ -206,7 +206,7 @@ te_dataset.prepare()
 tr_image_ids = np.random.choice(tr_dataset.image_ids, config.N_TR_IMAGES)
 te_image_ids = np.random.choice(te_dataset.image_ids, config.N_TE_IMAGES)
 
-print("Top masks for training dataset")
+'''print("Top masks for training dataset")
 
 for image_id in tr_image_ids:
     image = tr_dataset.load_image(image_id)
@@ -214,7 +214,7 @@ for image_id in tr_image_ids:
     print(class_ids)
     visualize.display_top_masks(image, mask, class_ids, tr_dataset.class_names)
    
-'''print("Top masks for test dataset")
+print("Top masks for test dataset")
 for image_id in te_image_ids:
     image = te_dataset.load_image(image_id)
     mask, class_ids = te_dataset.load_mask(image_id)
@@ -222,7 +222,7 @@ for image_id in te_image_ids:
 
 ################# Train model
 
-'''model = modellib.MaskRCNN(mode="training", config=config,
+model = modellib.MaskRCNN(mode="training", config=config,
                           model_dir=MODEL_DIR)
 
 init_with = "coco"  # imagenet, coco, or last
@@ -263,7 +263,7 @@ model.train(dataset_train, dataset_val,
 
 ############################################# Inference
 
-class InferenceConfig(LabelsConfig):
+'''class InferenceConfig(LabelsConfig):
     GPU_COUNT = 1
     IMAGES_PER_GPU = 1
 
