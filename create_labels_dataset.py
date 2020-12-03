@@ -53,10 +53,10 @@ class LabelsConfig(Config):
     NUM_CLASSES = 1 + 1 # background + 1 shape
 
     # Use a small epoch since the data is simple
-    STEPS_PER_EPOCH = 5
+    STEPS_PER_EPOCH = 20
     
-    N_TR_IMAGES = 6
-    N_TE_IMAGES = 2
+    N_TR_IMAGES = 100
+    N_TE_IMAGES = 20
     
     
 
@@ -116,11 +116,6 @@ class LabelsDataset(utils.Dataset):
             mask[row_s:row_e, col_s:col_e, i] = 1
             # Map class names to class IDs.
             class_ids.append(self.class_names.index('rectangle'))
-            print(info)
-            print(image.shape)
-            print(mask.shape)
-            print(class_ids)
-            print("-------------------")
         return mask, np.asarray(class_ids, dtype='int32')
         
     def draw_shape(self, image, val=100, color=(255,0,0)):
@@ -224,7 +219,7 @@ elif init_with == "last":
 print("Training heads...")
 model.train(tr_dataset, te_dataset, 
             learning_rate=config.LEARNING_RATE, 
-            epochs=5,
+            epochs=3,
             layers='heads')
 
 print("Training all, fine tuning...")          
@@ -234,7 +229,7 @@ print("Training all, fine tuning...")
 # train by name pattern.
 model.train(dataset_train, dataset_val, 
             learning_rate=config.LEARNING_RATE / 10,
-            epochs=2, 
+            epochs=3, 
             layers="all")
 
 
