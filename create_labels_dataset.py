@@ -47,38 +47,16 @@ class LabelsConfig(Config):
     to the toy shapes dataset.
     """
     # Give the configuration a recognizable name
-    NAME = "shapes"
-
-    # Train on 1 GPU and 8 images per GPU. We can put multiple images on each
-    # GPU because the images are small. Batch size is 8 (GPUs * images/GPU).
-    GPU_COUNT = 1
-    IMAGES_PER_GPU = 2
+    NAME = "labels"
 
     # Number of classes (including background)
     NUM_CLASSES = 1 + 1 # background + 1 shape
 
-    # Use small images for faster training. Set the limits of the small side
-    # the large side, and that determines the image shape.
-    IMAGE_MIN_DIM = 128
-    IMAGE_MAX_DIM = 128
-
-    # Use smaller anchors because our image and objects are small
-    RPN_ANCHOR_SCALES = (8, 16, 32, 64, 128)  # anchor side in pixels
-
-    # Reduce training ROIs per image because the images are small and have
-    # few objects. Aim to allow ROI sampling to pick 33% positive ROIs.
-    TRAIN_ROIS_PER_IMAGE = 32
-
     # Use a small epoch since the data is simple
     STEPS_PER_EPOCH = 5
-
-    # use small validation steps since the epoch is small
-    VALIDATION_STEPS = 1
     
     N_TR_IMAGES = 6
     N_TE_IMAGES = 2
-    
-    #IMAGE_CHANNEL_COUNT = 3
     
     
 
@@ -97,24 +75,23 @@ class LabelsDataset(utils.Dataset):
         for i, img in enumerate(file_names):
             image = cv2.imread(img)
             shape = image.shape
-            w = shape[0]
-            h = shape[1]
-            print(image.astype(np.float32).shape)
+            resized_image = cv2.resize(image, (width, height))
+            w = width #shape[0]
+            h = height #shape[1]
             self.add_image("dataset", image_id=i, path=img, width=w, height=h)
             if i > count_images:
                 break
 
-    '''def load_image(self, image_id):
+    def load_image(self, image_id):
         """Generate an image from the specs of the given image ID.
         Typically this function loads the image from a file, but
         in this case it generates the image on the fly from the
         specs in image_info.
         """
         info = self.image_info[image_id]
-        image = cv2.imread(info["path"], 0)
+        image = cv2.imread(info["path"])
         resized_image = cv2.resize(image, (info["width"], info["height"]))
-        print()
-        return image'''
+        return resized_image
         
     def image_reference(self, image_id):
         """Return the label data of the image."""
@@ -189,8 +166,8 @@ class LabelsDataset(utils.Dataset):
        
 config = LabelsConfig()
 
-width = 128
-height = 128
+width = 1024
+height = 1024
 
 
 tr_dataset = LabelsDataset()
