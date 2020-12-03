@@ -26,7 +26,7 @@ COCO_MODEL_PATH = os.path.join(ROOT_DIR, "mask_rcnn_coco.h5")
 if not os.path.exists(COCO_MODEL_PATH):
     utils.download_trained_weights(COCO_MODEL_PATH)
 else:
-    print("File present")
+    print("Trained model present")
 
 # Directory of images to run detection on
 TR_IMAGE_DIR = "data/crops/martius/tr/"
@@ -52,7 +52,7 @@ class LabelsConfig(Config):
     # Train on 1 GPU and 8 images per GPU. We can put multiple images on each
     # GPU because the images are small. Batch size is 8 (GPUs * images/GPU).
     GPU_COUNT = 1
-    IMAGES_PER_GPU = 8
+    IMAGES_PER_GPU = 2
 
     # Number of classes (including background)
     NUM_CLASSES = 1 + 1 # background + 1 shape
@@ -75,10 +75,10 @@ class LabelsConfig(Config):
     # use small validation steps since the epoch is small
     VALIDATION_STEPS = 1
     
-    N_TR_IMAGES = 5
+    N_TR_IMAGES = 6
     N_TE_IMAGES = 2
     
-    IMAGE_CHANNEL_COUNT = 3
+    #IMAGE_CHANNEL_COUNT = 3
     
     
 
@@ -93,15 +93,16 @@ class LabelsDataset(utils.Dataset):
         """
         file_names = glob.glob(image_dir + "*.jpg")
         # Add classes
-        self.add_class("labels", 1, "square")
+        self.add_class("dataset", 1, "rectangle")
         for i, img in enumerate(file_names):
-            image = cv2.imread(img, 0)
+            image = cv2.imread(img)
+            #image = image[...,::-1]
             #resized_image = cv2.resize(image, (width, height))
             shape = image.shape
             w = shape[0]
             h = shape[1]
-            shapes = self.random_image(w, h)
-            self.add_image("labels", image_id=i, path=img, width=w, height=h, shapes=shapes)
+            print(image.astype(np.float32).shape)
+            self.add_image("dataset", image_id=i, path=img, width=w, height=h)
             if i > count_images:
                 break
 
@@ -113,78 +114,72 @@ class LabelsDataset(utils.Dataset):
         """
         info = self.image_info[image_id]
         image = cv2.imread(info["path"], 0)
-        #resized_image = cv2.resize(image, (info["width"], info["height"]))
+        resized_image = cv2.resize(image, (info["width"], info["height"]))
         return image
         
     def image_reference(self, image_id):
         """Return the label data of the image."""
         info = self.image_info[image_id]
-        if info["source"] == "labels":
-            return info["shapes"]
-        else:
-            super(self.__class__).image_reference(self, image_id)
+        return info['path']
         
     def load_mask(self, image_id):
         """Generate instance masks for shapes of the given image ID.
         """
         info = self.image_info[image_id]
-        shapes = info['shapes']
-        count = len(shapes)
-        mask = np.zeros([info['height'], info['width'], count], dtype=np.uint8)
-        for i, (shape, dims) in enumerate(info['shapes']):
-            mask[:, :, i:i+1] = mask[:, :, i:i+1].copy() #self.draw_shape(mask[:, :, i:i+1].copy(), shape, dims, 1)
-        # Handle occlusions
-        occlusion = np.logical_not(mask[:, :, -1]).astype(np.uint8)
-        for i in range(count-2, -1, -1):
-            mask[:, :, i] = mask[:, :, i] * occlusion
-            occlusion = np.logical_and(occlusion, np.logical_not(mask[:, :, i]))
-        # Map class names to class IDs.
-        class_ids = np.array([self.class_names.index(s[0]) for s in shapes])
-        return mask.astype(np.bool), class_ids.astype(np.int32)
+        image = self.load_image(image_id)
+        shapes = np.array(["rectangle"])
+        box = self.draw_shape(image)
+        mask = np.zeros([info['height'], info['width'], len(shapes)], dtype=np.uint8)
+        class_ids = list()
+        # only one rectangle is considered
+        for i in range(len(shapes)):
+            row_s = box[1]
+            row_e = box[3]
+            col_s = box[0]
+            col_e = box[2]
+            mask[row_s:row_e, col_s:col_e, i] = 1
+            # Map class names to class IDs.
+            class_ids.append(self.class_names.index('rectangle'))
+        return mask, np.asarray(class_ids, dtype='int32')
         
-    def random_shape(self, height, width):
-        """Generates specifications of a random shape that lies within
-        the given height and width boundaries.
-        Returns a tuple of three valus:
-        * The shape name (square, circle, ...)
-        * Shape color: a tuple of 3 values, RGB.
-        * Shape dimensions: A tuple of values that define the shape size
-                            and location. Differs per shape type.
-        """
-        # Shape
-        shape = "square"
-        # Color
-        #color = tuple([random.randint(0, 255) for _ in range(3)])
-        # Center x, y
-        buffer = 20
-        y = random.randint(buffer, height - buffer - 1)
-        x = random.randint(buffer, width - buffer - 1)
-        # Size
-        s = random.randint(buffer, height//4)
-        return shape, (x, y, s)
-           
-    def random_image(self, height, width):
-        """Creates random specifications of an image with multiple shapes.
-        Returns the background color of the image and a list of shape
-        specifications that can be used to draw the image.
-        """
-        # Pick random background color
-        #bg_color = np.array([random.randint(0, 255) for _ in range(3)])
-        # Generate a few random shapes and record their
-        # bounding boxes
-        shapes = []
-        boxes = []
-        N = 1 #random.randint(1, 4)
-        #for _ in range(N):
-        shape, dims = self.random_shape(height, width)
-        shapes.append((shape, dims))
-        x, y, s = dims
-        boxes.append([y-s, x-s, y+s, x+s])
-        # Apply non-max suppression wit 0.3 threshold to avoid
-        # shapes covering each other
-        keep_ixs = utils.non_max_suppression(np.array(boxes), np.arange(N), 0.3)
-        shapes = [s for i, s in enumerate(shapes) if i in keep_ixs]
-        return shapes
+    def draw_shape(self, image, val=100, color=(255,0,0)):
+        threshold = val
+        src_gray = image
+        canny_output = cv2.Canny(src_gray, threshold, threshold * 2)
+
+        kernel = np.ones((5, 5),np.uint8)
+
+        canny_output = cv2.morphologyEx(canny_output, cv2.MORPH_CLOSE, kernel)
+    
+        contours, _ = cv2.findContours(canny_output, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    
+        contours_poly = [None]*len(contours)
+        boundRect = [None]*len(contours)
+        centers = [None]*len(contours)
+        radius = [None]*len(contours)
+        for i, c in enumerate(contours):
+            contours_poly[i] = cv2.approxPolyDP(c, 6, True)
+            boundRect[i] = cv2.boundingRect(contours_poly[i])    
+        drawing = np.zeros((canny_output.shape[0], canny_output.shape[1], 3), dtype=np.uint8)
+        max_area = 0
+        max_x1 = 0
+        max_x2 = 0
+        max_y1 = 0
+        max_y2 = 0
+        for i in range(len(contours)):
+            x1 = int(boundRect[i][0])
+            y1 = int(boundRect[i][1])
+            x2 = int(boundRect[i][0] + boundRect[i][2])
+            y2 = int(boundRect[i][1] + boundRect[i][3])
+            area = (x2 - x1) * (y2 - y1)
+            if area > max_area:
+                max_area = area
+                max_x1 = x1
+                max_y1 = y1
+                max_x2 = x2
+                max_y2 = y2
+        coors = [max_x1, max_y1, max_x2, max_y2]
+        return coors
        
 config = LabelsConfig()
 
@@ -202,12 +197,22 @@ te_dataset.load_labels(TE_IMAGE_DIR, config.N_TE_IMAGES, width, height)
 te_dataset.prepare()
 
 
-image_ids = np.random.choice(tr_dataset.image_ids, config.N_TR_IMAGES)
+tr_image_ids = np.random.choice(tr_dataset.image_ids, config.N_TR_IMAGES)
+te_image_ids = np.random.choice(te_dataset.image_ids, config.N_TE_IMAGES)
 
-'''for image_id in image_ids:
+'''print("Top masks for training dataset")
+
+for image_id in tr_image_ids:
     image = tr_dataset.load_image(image_id)
     mask, class_ids = tr_dataset.load_mask(image_id)
-    visualize.display_top_masks(image, mask, class_ids, tr_dataset.class_names)'''
+    print(class_ids)
+    visualize.display_top_masks(image, mask, class_ids, tr_dataset.class_names)
+   
+print("Top masks for test dataset")
+for image_id in te_image_ids:
+    image = te_dataset.load_image(image_id)
+    mask, class_ids = te_dataset.load_mask(image_id)
+    visualize.display_top_masks(image, mask, class_ids, te_dataset.class_names)'''
 
 ################# Train model
 
@@ -236,7 +241,7 @@ elif init_with == "last":
 print("Training heads...")
 model.train(tr_dataset, te_dataset, 
             learning_rate=config.LEARNING_RATE, 
-            epochs=1,
+            epochs=5,
             layers='heads')
 
 print("Training all, fine tuning...")          
