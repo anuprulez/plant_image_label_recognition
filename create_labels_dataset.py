@@ -128,8 +128,8 @@ class LabelsDataset(utils.Dataset):
         info = self.image_info[image_id]
         image = self.load_image(image_id)
         shapes = np.array(["rectangle"])
-        box = self.draw_shape(image)
-        mask = np.zeros([info['height'], info['width'], len(shapes)], dtype=np.uint8)
+        box, w, h = self.draw_shape(image)
+        mask = np.zeros([info["width"], info["height"], len(shapes)], dtype=np.uint8)
         class_ids = list()
         # only one rectangle is considered
         for i in range(len(shapes)):
@@ -178,8 +178,10 @@ class LabelsDataset(utils.Dataset):
                 max_y1 = y1
                 max_x2 = x2
                 max_y2 = y2
+        w = max_x2 - max_x1
+        h = max_y2 - max_y1
         coors = [max_x1, max_y1, max_x2, max_y2]
-        return coors
+        return coors, w, h
        
 config = LabelsConfig()
 
