@@ -96,8 +96,6 @@ class LabelsDataset(utils.Dataset):
         self.add_class("dataset", 1, "rectangle")
         for i, img in enumerate(file_names):
             image = cv2.imread(img)
-            #image = image[...,::-1]
-            #resized_image = cv2.resize(image, (width, height))
             shape = image.shape
             w = shape[0]
             h = shape[1]
@@ -106,7 +104,7 @@ class LabelsDataset(utils.Dataset):
             if i > count_images:
                 break
 
-    def load_image(self, image_id):
+    '''def load_image(self, image_id):
         """Generate an image from the specs of the given image ID.
         Typically this function loads the image from a file, but
         in this case it generates the image on the fly from the
@@ -115,7 +113,8 @@ class LabelsDataset(utils.Dataset):
         info = self.image_info[image_id]
         image = cv2.imread(info["path"], 0)
         resized_image = cv2.resize(image, (info["width"], info["height"]))
-        return image
+        print()
+        return image'''
         
     def image_reference(self, image_id):
         """Return the label data of the image."""
@@ -140,6 +139,11 @@ class LabelsDataset(utils.Dataset):
             mask[row_s:row_e, col_s:col_e, i] = 1
             # Map class names to class IDs.
             class_ids.append(self.class_names.index('rectangle'))
+            print(info)
+            print(image.shape)
+            print(mask.shape)
+            print(class_ids)
+            print("-------------------")
         return mask, np.asarray(class_ids, dtype='int32')
         
     def draw_shape(self, image, val=100, color=(255,0,0)):
@@ -202,7 +206,7 @@ te_dataset.prepare()
 tr_image_ids = np.random.choice(tr_dataset.image_ids, config.N_TR_IMAGES)
 te_image_ids = np.random.choice(te_dataset.image_ids, config.N_TE_IMAGES)
 
-'''print("Top masks for training dataset")
+print("Top masks for training dataset")
 
 for image_id in tr_image_ids:
     image = tr_dataset.load_image(image_id)
@@ -210,7 +214,7 @@ for image_id in tr_image_ids:
     print(class_ids)
     visualize.display_top_masks(image, mask, class_ids, tr_dataset.class_names)
    
-print("Top masks for test dataset")
+'''print("Top masks for test dataset")
 for image_id in te_image_ids:
     image = te_dataset.load_image(image_id)
     mask, class_ids = te_dataset.load_mask(image_id)
@@ -218,7 +222,7 @@ for image_id in te_image_ids:
 
 ################# Train model
 
-model = modellib.MaskRCNN(mode="training", config=config,
+'''model = modellib.MaskRCNN(mode="training", config=config,
                           model_dir=MODEL_DIR)
 
 init_with = "coco"  # imagenet, coco, or last
@@ -259,7 +263,7 @@ model.train(dataset_train, dataset_val,
 
 ############################################# Inference
 
-'''class InferenceConfig(LabelsConfig):
+class InferenceConfig(LabelsConfig):
     GPU_COUNT = 1
     IMAGES_PER_GPU = 1
 
