@@ -53,7 +53,7 @@ class LabelsConfig(Config):
     NUM_CLASSES = 1 + 1 # background + 1 shape
 
     # Use a small epoch since the data is simple
-    STEPS_PER_EPOCH = 20
+    STEPS_PER_EPOCH = 5
     
     N_TR_IMAGES = 100
     N_TE_IMAGES = 20
@@ -76,8 +76,8 @@ class LabelsDataset(utils.Dataset):
             image = cv2.imread(img)
             shape = image.shape
             resized_image = cv2.resize(image, (width, height))
-            w = width #shape[0]
-            h = height #shape[1]
+            w = width
+            h = height
             self.add_image("dataset", image_id=i, path=img, width=w, height=h)
             if i > count_images:
                 break
@@ -164,21 +164,22 @@ config = LabelsConfig()
 width = 1024
 height = 1024
 
+print("Creating train datasets...")
 
 tr_dataset = LabelsDataset()
 tr_dataset.load_labels(TR_IMAGE_DIR, config.N_TR_IMAGES, width, height)
 tr_dataset.prepare()
 
-
+print("Creating test datasets...")
 te_dataset = LabelsDataset()
 te_dataset.load_labels(TE_IMAGE_DIR, config.N_TE_IMAGES, width, height)
 te_dataset.prepare()
 
 
-tr_image_ids = np.random.choice(tr_dataset.image_ids, config.N_TR_IMAGES)
+'''tr_image_ids = np.random.choice(tr_dataset.image_ids, config.N_TR_IMAGES)
 te_image_ids = np.random.choice(te_dataset.image_ids, config.N_TE_IMAGES)
 
-'''print("Top masks for training dataset")
+print("Top masks for training dataset")
 
 for image_id in tr_image_ids:
     image = tr_dataset.load_image(image_id)
@@ -193,6 +194,8 @@ for image_id in te_image_ids:
     visualize.display_top_masks(image, mask, class_ids, te_dataset.class_names)'''
 
 ################# Train model
+
+print("Loading pretrained model...")
 
 model = modellib.MaskRCNN(mode="training", config=config,
                           model_dir=MODEL_DIR)
@@ -219,7 +222,7 @@ elif init_with == "last":
 print("Training heads...")
 model.train(tr_dataset, te_dataset, 
             learning_rate=config.LEARNING_RATE, 
-            epochs=3,
+            epochs=1,
             layers='heads')
 
 print("Training all, fine tuning...")          
@@ -229,64 +232,5 @@ print("Training all, fine tuning...")
 # train by name pattern.
 model.train(dataset_train, dataset_val, 
             learning_rate=config.LEARNING_RATE / 10,
-            epochs=3, 
+            epochs=1, 
             layers="all")
-
-
-############################################# Inference
-
-'''class InferenceConfig(LabelsConfig):
-    GPU_COUNT = 1
-    IMAGES_PER_GPU = 1
-
-inference_config = InferenceConfig()
-
-print("Creating a model...")
-
-# Recreate the model in inference mode
-model = modellib.MaskRCNN(mode="inference", 
-                          config=inference_config,
-                          model_dir=MODEL_DIR)
-
-# Get path to saved weights
-# Either set a specific path or find last trained weights
-# model_path = os.path.join(ROOT_DIR, ".h5 file name here")
-model_path = "/home/kumara/image_segmentation_plants/plant_image_label_recognition/mrcnn/logs/shapes20201126T1039/mask_rcnn_shapes_0002.h5" #model.find_last() 
-#"/home/ubuntu/data/plants_image/plant_image_label_recognition/mrcnn/logs/shapes20201123T2239/mask_rcnn_shapes_0002.h5" #model.find_last()
-
-# Load trained weights
-print("Loading weights from ", model_path)
-model.load_weights(model_path, by_name=True)
-
-
-
-print("Choosing a random test image...")
-
-# Test on random images
-image_ids = np.random.choice(dataset_val.image_ids, num_images)
-
-
-for image_id in image_ids:
-    original_image, image_meta, gt_class_id, gt_bbox, gt_mask = modellib.load_image_gt(dataset_val, inference_config, image_id, use_mini_mask=False)
-    
-    log("original_image", original_image)
-    log("image_meta", image_meta)
-    log("gt_class_id", gt_class_id)
-    log("gt_bbox", gt_bbox)
-    log("gt_mask", gt_mask)
-
-    #plt.imshow(original_image)
-
-
-    #visualize.display_instances(original_image, gt_bbox, gt_mask, gt_class_id, dataset_train.class_names, figsize=(8, 8))
-
-    print("Detecting objects...")
-
-    results = model.detect([original_image], verbose=1)
-
-    r = results[0]
-
-    print("Displaying objects...")
-    visualize.display_instances(original_image, r['rois'], r['masks'], r['class_ids'], 
-                            dataset_val.class_names, r['scores'], ax=get_ax(), figsize=(8, 8))'''
-                            

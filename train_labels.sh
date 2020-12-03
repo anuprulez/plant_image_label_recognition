@@ -1,1 +1,1 @@
-python -W ignore create_labels_dataset.py
+python -W ignore train_labels.py
