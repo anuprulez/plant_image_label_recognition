@@ -7,15 +7,18 @@ import skimage.io
 import glob
 import matplotlib
 import matplotlib.pyplot as plt
+import cv2
 
 # Root directory of the project
 ROOT_DIR = os.path.abspath("mrcnn")
 
 # Import Mask RCNN
 sys.path.append(ROOT_DIR)  # To find local version of the library
+from mrcnn.config import Config
 from mrcnn import utils
 import mrcnn.model as modellib
 from mrcnn import visualize
+from mrcnn.model import log
 
 # Import COCO config
 #sys.path.append(os.path.join(ROOT_DIR, "coco/"))  # To find local version
@@ -24,7 +27,9 @@ from mrcnn import visualize
 #%matplotlib inline 
 
 # Directory to save logs and trained model
-MODEL_DIR = os.path.join(ROOT_DIR, "logs")
+MODEL_DIR = os.path.join(ROOT_DIR, "logs/")
+
+model_path = "/home/kumara/image_segmentation_plants/plant_image_label_recognition/mrcnn/logs/labels20201204T1616//mask_rcnn_labels_0001.h5"
 
 # Local path to trained weights file
 #COCO_MODEL_PATH = os.path.join(ROOT_DIR, "mask_rcnn_coco.h5")
@@ -67,17 +72,22 @@ config.display()
 model = modellib.MaskRCNN(mode="inference", model_dir=MODEL_DIR, config=config)
 
 # Load weights trained on MS-COCO
-model.load_weights(COCO_MODEL_PATH, by_name=True)
+print("Loading weights from ", model_path)
+model.load_weights(model_path, by_name=True)
+
+width = 1024
+height = 2048
 
 # Load a random image from the images folder
 file_names = glob.glob(IMAGE_DIR + "*.jpg")
-
 for fn in file_names:
-    image = skimage.io.imread(fn)
-
+    #image = skimage.io.imread(fn)
+    image = cv2.imread(fn)
+    shape = image.shape
+    resized_image = cv2.resize(image, (width, height))
     # Run detection
-    results = model.detect([image], verbose=1)
-
+    results = model.detect([resized_image], verbose=1)
+    class_names = ["BG", "rectangle"]
     # Visualize results
     r = results[0]
-    visualize.display_instances(image, r['rois'], r['masks'], r['class_ids'], class_names, r['scores'])
+    visualize.display_instances(resized_image, r['rois'], r['masks'], r['class_ids'], class_names, r['scores'], figsize=(8, 8))
