@@ -230,7 +230,7 @@ print("Training all, fine tuning...")
 # Passing layers="all" trains all layers. You can also 
 # pass a regular expression to select which layers to
 # train by name pattern.
-model.train(dataset_train, dataset_val, 
+model.train(tr_dataset, te_dataset, 
             learning_rate=config.LEARNING_RATE / 10,
             epochs=1, 
             layers="all")
