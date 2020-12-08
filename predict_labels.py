@@ -29,7 +29,7 @@ from mrcnn.model import log
 # Directory to save logs and trained model
 MODEL_DIR = os.path.join(ROOT_DIR, "logs/")
 
-model_path = "/home/kumara/image_segmentation_plants/plant_image_label_recognition/mrcnn/logs/labels20201204T1616//mask_rcnn_labels_0001.h5"
+model_path = "/home/kumara/image_segmentation_plants/plant_image_label_recognition/mrcnn/logs/labels20201207T0924//mask_rcnn_labels_0001.h5"
 
 # Local path to trained weights file
 #COCO_MODEL_PATH = os.path.join(ROOT_DIR, "mask_rcnn_coco.h5")
@@ -39,7 +39,7 @@ model_path = "/home/kumara/image_segmentation_plants/plant_image_label_recogniti
 
 # Directory of images to run detection on
 IMAGE_DIR = "data/full_images/"
-
+#IMAGE_DIR = "data/crops/martius/te/"
 
 class LabelsConfig(Config):
     """Configuration for training on the toy shapes dataset.
@@ -76,7 +76,7 @@ print("Loading weights from ", model_path)
 model.load_weights(model_path, by_name=True)
 
 width = 1024
-height = 2048
+height = 1024
 
 # Load a random image from the images folder
 file_names = glob.glob(IMAGE_DIR + "*.jpg")

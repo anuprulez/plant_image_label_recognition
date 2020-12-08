@@ -31,6 +31,7 @@ else:
 # Directory of images to run detection on
 TR_IMAGE_DIR = "data/crops/martius/tr/"
 TE_IMAGE_DIR = "data/crops/martius/val/"
+TR_IMAGE_SI_DIR = "data/crops/martius/tr_si/"
 
 # Import Mask RCNN
 sys.path.append(ROOT_DIR)  # To find local version of the library
@@ -55,8 +56,8 @@ class LabelsConfig(Config):
     # Use a small epoch since the data is simple
     STEPS_PER_EPOCH = 5
     
-    N_TR_IMAGES = 100
-    N_TE_IMAGES = 20
+    N_TR_IMAGES = 1
+    N_TE_IMAGES = 2
     
     
 
@@ -64,21 +65,33 @@ class LabelsDataset(utils.Dataset):
     """Create the labels dataset.
     """
 
-    def load_labels(self, image_dir, count_images, width, height):
+    def load_labels(self, image_dir, count_images, width=512, height=512):
         """Generate the requested number of synthetic images.
         count: number of images to generate.
         height, width: the size of the generated images.
         """
         file_names = glob.glob(image_dir + "*.jpg")
+        wt = 1024
+        ht = 2048
+        channels = 3
+        alpha = 0.5
+        beta = (1.0 - alpha)
+        background_image = np.zeros([ht, wt, channels], dtype=np.uint8)
         # Add classes
         self.add_class("dataset", 1, "rectangle")
         for i, img in enumerate(file_names):
             image = cv2.imread(img)
             shape = image.shape
             resized_image = cv2.resize(image, (width, height))
-            w = width
-            h = height
-            self.add_image("dataset", image_id=i, path=img, width=w, height=h)
+            #print(resized_image.shape)
+            background_image[20:532, 20:532,:] = resized_image
+            #print(background_image.shape)
+            #plt.imshow(background_image)
+            #plt.show()
+            si_file_name = "{}.jpg".format(i)
+            si_img_path = os.path.join(TR_IMAGE_SI_DIR, si_file_name)
+            cv2.imwrite(si_img_path, background_image)
+            self.add_image("dataset", image_id=i, path=si_img_path, width=wt, height=ht)
             if i > count_images:
                 break
 
@@ -90,8 +103,8 @@ class LabelsDataset(utils.Dataset):
         """
         info = self.image_info[image_id]
         image = cv2.imread(info["path"])
-        resized_image = cv2.resize(image, (info["width"], info["height"]))
-        return resized_image
+        #resized_image = cv2.resize(image, (info["width"], info["height"]))
+        return image
         
     def image_reference(self, image_id):
         """Return the label data of the image."""
@@ -105,7 +118,7 @@ class LabelsDataset(utils.Dataset):
         image = self.load_image(image_id)
         shapes = np.array(["rectangle"])
         box, w, h = self.draw_shape(image)
-        mask = np.zeros([info["width"], info["height"], len(shapes)], dtype=np.uint8)
+        mask = np.zeros([info["height"], info["width"], len(shapes)], dtype=np.uint8)
         class_ids = list()
         # only one rectangle is considered
         for i in range(len(shapes)):
@@ -114,6 +127,8 @@ class LabelsDataset(utils.Dataset):
             col_s = box[0]
             col_e = box[2]
             mask[row_s:row_e, col_s:col_e, i] = 1
+            plt.imshow(mask)
+            plt.show()
             # Map class names to class IDs.
             class_ids.append(self.class_names.index('rectangle'))
         return mask, np.asarray(class_ids, dtype='int32')
@@ -161,33 +176,36 @@ class LabelsDataset(utils.Dataset):
        
 config = LabelsConfig()
 
-width = 1024
-height = 1024
+width = 512
+height = 512
 
 print("Creating train datasets...")
 
 tr_dataset = LabelsDataset()
+# TR_IMAGE_DIR
 tr_dataset.load_labels(TR_IMAGE_DIR, config.N_TR_IMAGES, width, height)
 tr_dataset.prepare()
 
-print("Creating test datasets...")
+'''print("Creating test datasets...")
 te_dataset = LabelsDataset()
 te_dataset.load_labels(TE_IMAGE_DIR, config.N_TE_IMAGES, width, height)
 te_dataset.prepare()
-
-
-'''tr_image_ids = np.random.choice(tr_dataset.image_ids, config.N_TR_IMAGES)
 te_image_ids = np.random.choice(te_dataset.image_ids, config.N_TE_IMAGES)
+'''
+
+tr_image_ids = np.random.choice(tr_dataset.image_ids, config.N_TR_IMAGES)
 
 print("Top masks for training dataset")
 
 for image_id in tr_image_ids:
     image = tr_dataset.load_image(image_id)
     mask, class_ids = tr_dataset.load_mask(image_id)
-    print(class_ids)
+    #plt.imshow(image)
+    #plt.imshow(mask[:, :, 0], cmap='gray', alpha=0.5)
+    #plt.show()
     visualize.display_top_masks(image, mask, class_ids, tr_dataset.class_names)
    
-print("Top masks for test dataset")
+'''print("Top masks for test dataset")
 for image_id in te_image_ids:
     image = te_dataset.load_image(image_id)
     mask, class_ids = te_dataset.load_mask(image_id)
@@ -195,7 +213,7 @@ for image_id in te_image_ids:
 
 ################# Train model
 
-print("Loading pretrained model...")
+'''print("Loading pretrained model...")
 
 model = modellib.MaskRCNN(mode="training", config=config,
                           model_dir=MODEL_DIR)
@@ -233,4 +251,4 @@ print("Training all, fine tuning...")
 model.train(tr_dataset, te_dataset, 
             learning_rate=config.LEARNING_RATE / 10,
             epochs=1, 
-            layers="all")
+            layers="all")'''
