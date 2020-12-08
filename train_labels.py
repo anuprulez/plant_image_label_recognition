@@ -56,7 +56,7 @@ class LabelsConfig(Config):
     # Use a small epoch since the data is simple
     STEPS_PER_EPOCH = 5
     
-    N_TR_IMAGES = 1
+    N_TR_IMAGES = 3
     N_TE_IMAGES = 2
     
     
@@ -76,24 +76,24 @@ class LabelsDataset(utils.Dataset):
         channels = 3
         alpha = 0.5
         beta = (1.0 - alpha)
-        background_image = np.zeros([ht, wt, channels], dtype=np.uint8)
+        
         # Add classes
         self.add_class("dataset", 1, "rectangle")
         for i, img in enumerate(file_names):
             image = cv2.imread(img)
             shape = image.shape
             resized_image = cv2.resize(image, (width, height))
-            #print(resized_image.shape)
-            background_image[20:532, 20:532,:] = resized_image
-            #print(background_image.shape)
-            #plt.imshow(background_image)
-            #plt.show()
+            rand_w = np.random.randint(1, ht - width - 1)
+            rand_h = np.random.randint(1, wt - height - 1)
+            background_image = np.zeros([ht, wt, channels], dtype=np.uint8)
+            background_image[rand_w:rand_w + width, rand_h:rand_h + height, :] = resized_image
             si_file_name = "{}.jpg".format(i)
             si_img_path = os.path.join(TR_IMAGE_SI_DIR, si_file_name)
             cv2.imwrite(si_img_path, background_image)
             self.add_image("dataset", image_id=i, path=si_img_path, width=wt, height=ht)
             if i > count_images:
                 break
+            #print("--------------------")
 
     def load_image(self, image_id):
         """Generate an image from the specs of the given image ID.
@@ -127,8 +127,8 @@ class LabelsDataset(utils.Dataset):
             col_s = box[0]
             col_e = box[2]
             mask[row_s:row_e, col_s:col_e, i] = 1
-            plt.imshow(mask)
-            plt.show()
+            #plt.imshow(mask)
+            #plt.show()
             # Map class names to class IDs.
             class_ids.append(self.class_names.index('rectangle'))
         return mask, np.asarray(class_ids, dtype='int32')
@@ -186,12 +186,11 @@ tr_dataset = LabelsDataset()
 tr_dataset.load_labels(TR_IMAGE_DIR, config.N_TR_IMAGES, width, height)
 tr_dataset.prepare()
 
-'''print("Creating test datasets...")
+print("Creating test datasets...")
 te_dataset = LabelsDataset()
 te_dataset.load_labels(TE_IMAGE_DIR, config.N_TE_IMAGES, width, height)
 te_dataset.prepare()
 te_image_ids = np.random.choice(te_dataset.image_ids, config.N_TE_IMAGES)
-'''
 
 tr_image_ids = np.random.choice(tr_dataset.image_ids, config.N_TR_IMAGES)
 
@@ -205,11 +204,11 @@ for image_id in tr_image_ids:
     #plt.show()
     visualize.display_top_masks(image, mask, class_ids, tr_dataset.class_names)
    
-'''print("Top masks for test dataset")
+print("Top masks for test dataset")
 for image_id in te_image_ids:
     image = te_dataset.load_image(image_id)
     mask, class_ids = te_dataset.load_mask(image_id)
-    visualize.display_top_masks(image, mask, class_ids, te_dataset.class_names)'''
+    visualize.display_top_masks(image, mask, class_ids, te_dataset.class_names)
 
 ################# Train model
 
