@@ -65,7 +65,7 @@ class LabelsDataset(utils.Dataset):
     """Create the labels dataset.
     """
 
-    def load_labels(self, image_dir, count_images, width=512, height=512, te_wt=1024, te_ht=2048):
+    def load_labels(self, image_dir, count_images, width=256, height=256, te_wt=512, te_ht=1024):
         """Generate the requested number of synthetic images.
         count: number of images to generate.
         height, width: the size of the generated images.
@@ -122,8 +122,6 @@ class LabelsDataset(utils.Dataset):
             col_s = box[0]
             col_e = box[2]
             mask[row_s:row_e, col_s:col_e, i] = 1
-            plt.imshow(mask)
-            plt.show()
             # Map class names to class IDs.
             class_ids.append(self.class_names.index('rectangle'))
         return mask, np.asarray(class_ids, dtype='int32')
@@ -171,8 +169,8 @@ class LabelsDataset(utils.Dataset):
        
 config = LabelsConfig()
 
-width = 512
-height = 512
+width = 256
+height = 256
 
 print("Creating train datasets...")
 
