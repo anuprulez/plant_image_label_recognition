@@ -32,6 +32,7 @@ else:
 TR_IMAGE_DIR = "data/crops/martius/tr/"
 TE_IMAGE_DIR = "data/crops/martius/val/"
 TR_IMAGE_SI_DIR = "data/crops/martius/tr_si/"
+TE_IMAGE_SI_DIR = "data/crops/martius/val_si/"
 
 # Import Mask RCNN
 sys.path.append(ROOT_DIR)  # To find local version of the library
@@ -65,7 +66,7 @@ class LabelsDataset(utils.Dataset):
     """Create the labels dataset.
     """
 
-    def load_labels(self, image_dir, count_images, width=256, height=256, te_wt=512, te_ht=1024):
+    def load_labels(self, image_dir, count_images, train=True, width=256, height=256, te_wt=512, te_ht=1024):
         """Generate the requested number of synthetic images.
         count: number of images to generate.
         height, width: the size of the generated images.
@@ -84,7 +85,10 @@ class LabelsDataset(utils.Dataset):
             background_image = np.zeros([te_ht, te_wt, channels], dtype=np.uint8)
             background_image[rand_w:rand_w + width, rand_h:rand_h + height, :] = resized_image
             si_file_name = "{}.jpg".format(i)
-            si_img_path = os.path.join(TR_IMAGE_SI_DIR, si_file_name)
+            if train is True:
+                si_img_path = os.path.join(TR_IMAGE_SI_DIR, si_file_name)
+            else:
+                si_img_path = os.path.join(TE_IMAGE_SI_DIR, si_file_name)
             cv2.imwrite(si_img_path, background_image)
             self.add_image("dataset", image_id=i, path=si_img_path, width=te_wt, height=te_ht)
             if i > count_images:
@@ -98,6 +102,7 @@ class LabelsDataset(utils.Dataset):
         """
         info = self.image_info[image_id]
         image = cv2.imread(info["path"])
+        print(info)
         #resized_image = cv2.resize(image, (info["width"], info["height"]))
         return image
         
@@ -176,12 +181,12 @@ print("Creating train datasets...")
 
 tr_dataset = LabelsDataset()
 # TR_IMAGE_DIR
-tr_dataset.load_labels(TR_IMAGE_DIR, config.N_TR_IMAGES, width, height)
+tr_dataset.load_labels(TR_IMAGE_DIR, config.N_TR_IMAGES, True, width, height)
 tr_dataset.prepare()
 
 print("Creating test datasets...")
 te_dataset = LabelsDataset()
-te_dataset.load_labels(TE_IMAGE_DIR, config.N_TE_IMAGES, width, height)
+te_dataset.load_labels(TE_IMAGE_DIR, config.N_TE_IMAGES, False, width, height)
 te_dataset.prepare()
 
 
