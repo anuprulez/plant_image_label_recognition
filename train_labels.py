@@ -102,8 +102,6 @@ class LabelsDataset(utils.Dataset):
         """
         info = self.image_info[image_id]
         image = cv2.imread(info["path"])
-        print(info)
-        #resized_image = cv2.resize(image, (info["width"], info["height"]))
         return image
         
     def image_reference(self, image_id):
