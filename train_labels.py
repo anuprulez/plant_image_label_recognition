@@ -56,7 +56,7 @@ class LabelsConfig(Config):
     # Use a small epoch since the data is simple
     STEPS_PER_EPOCH = 5
     
-    N_TR_IMAGES = 3
+    N_TR_IMAGES = 5
     N_TE_IMAGES = 2
     
     
@@ -65,17 +65,13 @@ class LabelsDataset(utils.Dataset):
     """Create the labels dataset.
     """
 
-    def load_labels(self, image_dir, count_images, width=512, height=512):
+    def load_labels(self, image_dir, count_images, width=512, height=512, te_wt=1024, te_ht=2048):
         """Generate the requested number of synthetic images.
         count: number of images to generate.
         height, width: the size of the generated images.
         """
         file_names = glob.glob(image_dir + "*.jpg")
-        wt = 1024
-        ht = 2048
         channels = 3
-        alpha = 0.5
-        beta = (1.0 - alpha)
         
         # Add classes
         self.add_class("dataset", 1, "rectangle")
@@ -83,17 +79,16 @@ class LabelsDataset(utils.Dataset):
             image = cv2.imread(img)
             shape = image.shape
             resized_image = cv2.resize(image, (width, height))
-            rand_w = np.random.randint(1, ht - width - 1)
-            rand_h = np.random.randint(1, wt - height - 1)
-            background_image = np.zeros([ht, wt, channels], dtype=np.uint8)
+            rand_w = np.random.randint(1, te_ht - width - 1)
+            rand_h = np.random.randint(1, te_wt - height - 1)
+            background_image = np.zeros([te_ht, te_wt, channels], dtype=np.uint8)
             background_image[rand_w:rand_w + width, rand_h:rand_h + height, :] = resized_image
             si_file_name = "{}.jpg".format(i)
             si_img_path = os.path.join(TR_IMAGE_SI_DIR, si_file_name)
             cv2.imwrite(si_img_path, background_image)
-            self.add_image("dataset", image_id=i, path=si_img_path, width=wt, height=ht)
+            self.add_image("dataset", image_id=i, path=si_img_path, width=te_wt, height=te_ht)
             if i > count_images:
                 break
-            #print("--------------------")
 
     def load_image(self, image_id):
         """Generate an image from the specs of the given image ID.
@@ -127,8 +122,8 @@ class LabelsDataset(utils.Dataset):
             col_s = box[0]
             col_e = box[2]
             mask[row_s:row_e, col_s:col_e, i] = 1
-            #plt.imshow(mask)
-            #plt.show()
+            plt.imshow(mask)
+            plt.show()
             # Map class names to class IDs.
             class_ids.append(self.class_names.index('rectangle'))
         return mask, np.asarray(class_ids, dtype='int32')
@@ -190,7 +185,9 @@ print("Creating test datasets...")
 te_dataset = LabelsDataset()
 te_dataset.load_labels(TE_IMAGE_DIR, config.N_TE_IMAGES, width, height)
 te_dataset.prepare()
-te_image_ids = np.random.choice(te_dataset.image_ids, config.N_TE_IMAGES)
+
+
+'''te_image_ids = np.random.choice(te_dataset.image_ids, config.N_TE_IMAGES)
 
 tr_image_ids = np.random.choice(tr_dataset.image_ids, config.N_TR_IMAGES)
 
@@ -199,20 +196,17 @@ print("Top masks for training dataset")
 for image_id in tr_image_ids:
     image = tr_dataset.load_image(image_id)
     mask, class_ids = tr_dataset.load_mask(image_id)
-    #plt.imshow(image)
-    #plt.imshow(mask[:, :, 0], cmap='gray', alpha=0.5)
-    #plt.show()
     visualize.display_top_masks(image, mask, class_ids, tr_dataset.class_names)
    
 print("Top masks for test dataset")
 for image_id in te_image_ids:
     image = te_dataset.load_image(image_id)
     mask, class_ids = te_dataset.load_mask(image_id)
-    visualize.display_top_masks(image, mask, class_ids, te_dataset.class_names)
+    visualize.display_top_masks(image, mask, class_ids, te_dataset.class_names)'''
 
 ################# Train model
 
-'''print("Loading pretrained model...")
+print("Loading pretrained model...")
 
 model = modellib.MaskRCNN(mode="training", config=config,
                           model_dir=MODEL_DIR)
@@ -250,4 +244,4 @@ print("Training all, fine tuning...")
 model.train(tr_dataset, te_dataset, 
             learning_rate=config.LEARNING_RATE / 10,
             epochs=1, 
-            layers="all")'''
+            layers="all")
