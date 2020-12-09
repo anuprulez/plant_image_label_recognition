@@ -66,7 +66,7 @@ class LabelsDataset(utils.Dataset):
     """Create the labels dataset.
     """
 
-    def load_labels(self, image_dir, count_images, train=True, width=300, height=300, te_wt=800, te_ht=1024):
+    def load_labels(self, image_dir, count_images, train=True, width=256, height=256, te_wt=800, te_ht=1024):
         """Generate the requested number of synthetic images.
         count: number of images to generate.
         height, width: the size of the generated images.
@@ -208,9 +208,7 @@ for image_id in te_image_ids:
 ################# Train model
 
 print("Loading pretrained model...")
-
 model = modellib.MaskRCNN(mode="training", config=config, model_dir=MODEL_DIR)
-
 # Load weights trained on MS COCO, but skip layers that
 # are different due to the different number of classes
 # See README for instructions to download the COCO weights
@@ -222,13 +220,3 @@ model.load_weights(COCO_MODEL_PATH, by_name=True, exclude=["mrcnn_class_logits",
 # which layers to train by name pattern.
 print("Training heads...")
 model.train(tr_dataset, te_dataset, learning_rate=config.LEARNING_RATE, epochs=5, layers='heads')
-
-'''print("Training all, fine tuning...")          
-# Fine tune all layers
-# Passing layers="all" trains all layers. You can also 
-# pass a regular expression to select which layers to
-# train by name pattern.
-model.train(tr_dataset, te_dataset, 
-            learning_rate=config.LEARNING_RATE / 10,
-            epochs=1, 
-            layers="all")'''
