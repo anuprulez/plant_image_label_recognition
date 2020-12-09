@@ -66,7 +66,7 @@ class LabelsDataset(utils.Dataset):
     """Create the labels dataset.
     """
 
-    def load_labels(self, image_dir, count_images, train=True, width=256, height=256, te_wt=1024, te_ht=1024):
+    def load_labels(self, image_dir, count_images, train=True, width=300, height=300, te_wt=800, te_ht=1024):
         """Generate the requested number of synthetic images.
         count: number of images to generate.
         height, width: the size of the generated images.
@@ -172,27 +172,27 @@ class LabelsDataset(utils.Dataset):
        
 config = LabelsConfig()
 
-width = 256
-height = 256
+#width = 256
+#height = 256
 
 print("Creating train datasets...")
 
 tr_dataset = LabelsDataset()
 # TR_IMAGE_DIR
-tr_dataset.load_labels(TR_IMAGE_DIR, config.N_TR_IMAGES, True, width, height)
+tr_dataset.load_labels(TR_IMAGE_DIR, config.N_TR_IMAGES, True)
 tr_dataset.prepare()
 
 print("Creating test datasets...")
 te_dataset = LabelsDataset()
-te_dataset.load_labels(TE_IMAGE_DIR, config.N_TE_IMAGES, False, width, height)
+te_dataset.load_labels(TE_IMAGE_DIR, config.N_TE_IMAGES, False)
 te_dataset.prepare()
 
 
-'''te_image_ids = np.random.choice(te_dataset.image_ids, config.N_TE_IMAGES)
+te_image_ids = np.random.choice(te_dataset.image_ids, config.N_TE_IMAGES)
 
 tr_image_ids = np.random.choice(tr_dataset.image_ids, config.N_TR_IMAGES)
 
-print("Top masks for training dataset")
+'''print("Top masks for training dataset")
 
 for image_id in tr_image_ids:
     image = tr_dataset.load_image(image_id)
@@ -209,40 +209,26 @@ for image_id in te_image_ids:
 
 print("Loading pretrained model...")
 
-model = modellib.MaskRCNN(mode="training", config=config,
-                          model_dir=MODEL_DIR)
+model = modellib.MaskRCNN(mode="training", config=config, model_dir=MODEL_DIR)
 
-init_with = "coco"  # imagenet, coco, or last
-
-if init_with == "imagenet":
-    model.load_weights(model.get_imagenet_weights(), by_name=True)
-elif init_with == "coco":
-    # Load weights trained on MS COCO, but skip layers that
-    # are different due to the different number of classes
-    # See README for instructions to download the COCO weights
-    model.load_weights(COCO_MODEL_PATH, by_name=True,
-                       exclude=["mrcnn_class_logits", "mrcnn_bbox_fc", 
-                                "mrcnn_bbox", "mrcnn_mask"])
-elif init_with == "last":
-    # Load the last model you trained and continue training
-    model.load_weights(model.find_last(), by_name=True)
+# Load weights trained on MS COCO, but skip layers that
+# are different due to the different number of classes
+# See README for instructions to download the COCO weights
+model.load_weights(COCO_MODEL_PATH, by_name=True, exclude=["mrcnn_class_logits", "mrcnn_bbox_fc",  "mrcnn_bbox", "mrcnn_mask"])
 
 # Train the head branches
 # Passing layers="heads" freezes all layers except the head
 # layers. You can also pass a regular expression to select
 # which layers to train by name pattern.
 print("Training heads...")
-model.train(tr_dataset, te_dataset, 
-            learning_rate=config.LEARNING_RATE, 
-            epochs=1,
-            layers='heads')
+model.train(tr_dataset, te_dataset, learning_rate=config.LEARNING_RATE, epochs=5, layers='heads')
 
-print("Training all, fine tuning...")          
+'''print("Training all, fine tuning...")          
 # Fine tune all layers
 # Passing layers="all" trains all layers. You can also 
 # pass a regular expression to select which layers to
 # train by name pattern.
 model.train(tr_dataset, te_dataset, 
             learning_rate=config.LEARNING_RATE / 10,
-            epochs=2, 
-            layers="all")
+            epochs=1, 
+            layers="all")'''
