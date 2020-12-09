@@ -55,10 +55,10 @@ class LabelsConfig(Config):
     NUM_CLASSES = 1 + 1 # background + 1 shape
 
     # Use a small epoch since the data is simple
-    STEPS_PER_EPOCH = 5
+    STEPS_PER_EPOCH = 50
     
-    N_TR_IMAGES = 5
-    N_TE_IMAGES = 2
+    N_TR_IMAGES = 250
+    N_TE_IMAGES = 50
     
     
 
@@ -66,7 +66,7 @@ class LabelsDataset(utils.Dataset):
     """Create the labels dataset.
     """
 
-    def load_labels(self, image_dir, count_images, train=True, width=256, height=256, te_wt=512, te_ht=1024):
+    def load_labels(self, image_dir, count_images, train=True, width=256, height=256, te_wt=1024, te_ht=1024):
         """Generate the requested number of synthetic images.
         count: number of images to generate.
         height, width: the size of the generated images.
@@ -102,6 +102,7 @@ class LabelsDataset(utils.Dataset):
         """
         info = self.image_info[image_id]
         image = cv2.imread(info["path"])
+        print(image.shape)
         return image
         
     def image_reference(self, image_id):
@@ -114,6 +115,7 @@ class LabelsDataset(utils.Dataset):
         """
         info = self.image_info[image_id]
         image = self.load_image(image_id)
+        print(image.shape)
         shapes = np.array(["rectangle"])
         box, w, h = self.draw_shape(image)
         mask = np.zeros([info["height"], info["width"], len(shapes)], dtype=np.uint8)
@@ -244,5 +246,5 @@ print("Training all, fine tuning...")
 # train by name pattern.
 model.train(tr_dataset, te_dataset, 
             learning_rate=config.LEARNING_RATE / 10,
-            epochs=1, 
+            epochs=2, 
             layers="all")
