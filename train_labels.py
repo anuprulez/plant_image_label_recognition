@@ -102,7 +102,6 @@ class LabelsDataset(utils.Dataset):
         """
         info = self.image_info[image_id]
         image = cv2.imread(info["path"])
-        print(image.shape)
         return image
         
     def image_reference(self, image_id):
@@ -115,7 +114,6 @@ class LabelsDataset(utils.Dataset):
         """
         info = self.image_info[image_id]
         image = self.load_image(image_id)
-        print(image.shape)
         shapes = np.array(["rectangle"])
         box, w, h = self.draw_shape(image)
         mask = np.zeros([info["height"], info["width"], len(shapes)], dtype=np.uint8)
