@@ -57,8 +57,10 @@ class LabelsConfig(Config):
     # Use a small epoch since the data is simple
     STEPS_PER_EPOCH = 50
     
-    N_TR_IMAGES = 250
-    N_TE_IMAGES = 50
+    N_TR_IMAGES = 5
+    N_TE_IMAGES = 2
+    
+    AUG_SIZE = 2
     
     
 
@@ -66,33 +68,37 @@ class LabelsDataset(utils.Dataset):
     """Create the labels dataset.
     """
 
-    def load_labels(self, image_dir, count_images, train=True, width=256, height=256, te_wt=800, te_ht=1024):
+    def load_labels(self, image_dir, train, aug_size):
         """Generate the requested number of synthetic images.
         count: number of images to generate.
         height, width: the size of the generated images.
         """
         file_names = glob.glob(image_dir + "*.jpg")
         channels = 3
-        
         # Add classes
         self.add_class("dataset", 1, "rectangle")
         for i, img in enumerate(file_names):
             image = cv2.imread(img)
-            shape = image.shape
-            resized_image = cv2.resize(image, (width, height))
+            self.augment_dataset(image, i, channels, aug_size, train)
+
+    def augment_dataset(self, image, file_idx, channels, augment_size=2, train=True, min_w=128, max_w=512, min_h=128, max_h=512, te_wt=840, te_ht=1024):
+        for aug_idx in range(augment_size):
+            width = np.random.randint(min_w, max_w)
+            height = np.random.randint(min_h, max_h)
+            resized_image = cv2.resize(image, (height, width))
             rand_w = np.random.randint(1, te_ht - width - 1)
             rand_h = np.random.randint(1, te_wt - height - 1)
             background_image = np.zeros([te_ht, te_wt, channels], dtype=np.uint8)
             background_image[rand_w:rand_w + width, rand_h:rand_h + height, :] = resized_image
-            si_file_name = "{}.jpg".format(i)
+            file_prefix = "{}_{}".format(file_idx, aug_idx)
+            si_file_name = "{}.jpg".format(file_prefix)
             if train is True:
                 si_img_path = os.path.join(TR_IMAGE_SI_DIR, si_file_name)
             else:
                 si_img_path = os.path.join(TE_IMAGE_SI_DIR, si_file_name)
             cv2.imwrite(si_img_path, background_image)
-            self.add_image("dataset", image_id=i, path=si_img_path, width=te_wt, height=te_ht)
-            if i > count_images:
-                break
+            print(file_prefix, si_img_path)
+            self.add_image("dataset", image_id=file_prefix, path=si_img_path, width=te_wt, height=te_ht)
 
     def load_image(self, image_id):
         """Generate an image from the specs of the given image ID.
@@ -100,8 +106,11 @@ class LabelsDataset(utils.Dataset):
         in this case it generates the image on the fly from the
         specs in image_info.
         """
+        #print(self.image_info)
         info = self.image_info[image_id]
         image = cv2.imread(info["path"])
+        plt.imshow(image)
+        plt.show()
         return image
         
     def image_reference(self, image_id):
@@ -112,6 +121,7 @@ class LabelsDataset(utils.Dataset):
     def load_mask(self, image_id):
         """Generate instance masks for shapes of the given image ID.
         """
+        print(image_id)
         info = self.image_info[image_id]
         image = self.load_image(image_id)
         shapes = np.array(["rectangle"])
@@ -172,42 +182,40 @@ class LabelsDataset(utils.Dataset):
        
 config = LabelsConfig()
 
-#width = 256
-#height = 256
-
 print("Creating train datasets...")
 
 tr_dataset = LabelsDataset()
-# TR_IMAGE_DIR
-tr_dataset.load_labels(TR_IMAGE_DIR, config.N_TR_IMAGES, True)
+tr_dataset.load_labels(TR_IMAGE_DIR, True, config.AUG_SIZE)
 tr_dataset.prepare()
 
 print("Creating test datasets...")
 te_dataset = LabelsDataset()
-te_dataset.load_labels(TE_IMAGE_DIR, config.N_TE_IMAGES, False)
+te_dataset.load_labels(TE_IMAGE_DIR, False, config.AUG_SIZE)
 te_dataset.prepare()
 
+tr_image_ids = tr_dataset.image_ids #np.random.choice(tr_dataset.image_ids, config.N_TR_IMAGES * config.AUG_SIZE)
 
-te_image_ids = np.random.choice(te_dataset.image_ids, config.N_TE_IMAGES)
+te_image_ids = te_dataset.image_ids #np.random.choice(te_dataset.image_ids, config.N_TE_IMAGES * config.AUG_SIZE)
 
-tr_image_ids = np.random.choice(tr_dataset.image_ids, config.N_TR_IMAGES)
+print(tr_dataset.image_ids)
+print(te_dataset.image_ids)
 
-'''print("Top masks for training dataset")
+print("Top masks for training dataset")
 
 for image_id in tr_image_ids:
     image = tr_dataset.load_image(image_id)
     mask, class_ids = tr_dataset.load_mask(image_id)
-    visualize.display_top_masks(image, mask, class_ids, tr_dataset.class_names)
+    #visualize.display_top_masks(image, mask, class_ids, tr_dataset.class_names)
    
 print("Top masks for test dataset")
 for image_id in te_image_ids:
     image = te_dataset.load_image(image_id)
     mask, class_ids = te_dataset.load_mask(image_id)
-    visualize.display_top_masks(image, mask, class_ids, te_dataset.class_names)'''
+    #visualize.display_top_masks(image, mask, class_ids, te_dataset.class_names)
 
 ################# Train model
 
-print("Loading pretrained model...")
+'''print("Loading pretrained model...")
 model = modellib.MaskRCNN(mode="training", config=config, model_dir=MODEL_DIR)
 # Load weights trained on MS COCO, but skip layers that
 # are different due to the different number of classes
@@ -219,4 +227,4 @@ model.load_weights(COCO_MODEL_PATH, by_name=True, exclude=["mrcnn_class_logits",
 # layers. You can also pass a regular expression to select
 # which layers to train by name pattern.
 print("Training heads...")
-model.train(tr_dataset, te_dataset, learning_rate=config.LEARNING_RATE, epochs=5, layers='heads')
+model.train(tr_dataset, te_dataset, learning_rate=config.LEARNING_RATE, epochs=5, layers='heads')'''
