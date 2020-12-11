@@ -57,8 +57,8 @@ class LabelsConfig(Config):
     # Use a small epoch since the data is simple
     STEPS_PER_EPOCH = 50
     
-    N_TR_IMAGES = 5
-    N_TE_IMAGES = 2
+    N_TR_IMAGES = 2
+    N_TE_IMAGES = 1
     
     AUG_SIZE = 2
     
@@ -68,7 +68,7 @@ class LabelsDataset(utils.Dataset):
     """Create the labels dataset.
     """
 
-    def load_labels(self, image_dir, train, aug_size):
+    def load_labels(self, image_dir, train, aug_size, count):
         """Generate the requested number of synthetic images.
         count: number of images to generate.
         height, width: the size of the generated images.
@@ -78,8 +78,9 @@ class LabelsDataset(utils.Dataset):
         # Add classes
         self.add_class("dataset", 1, "rectangle")
         for i, img in enumerate(file_names):
-            image = cv2.imread(img)
-            self.augment_dataset(image, i, channels, aug_size, train)
+            if i < count:
+                image = cv2.imread(img)
+                self.augment_dataset(image, i, channels, aug_size, train)
 
     def augment_dataset(self, image, file_idx, channels, augment_size=2, train=True, min_w=128, max_w=512, min_h=128, max_h=512, te_wt=840, te_ht=1024):
         for aug_idx in range(augment_size):
@@ -106,22 +107,18 @@ class LabelsDataset(utils.Dataset):
         in this case it generates the image on the fly from the
         specs in image_info.
         """
-        #print(self.image_info)
         info = self.image_info[image_id]
         image = cv2.imread(info["path"])
-        plt.imshow(image)
-        plt.show()
         return image
-        
+
     def image_reference(self, image_id):
         """Return the label data of the image."""
         info = self.image_info[image_id]
         return info['path']
-        
+
     def load_mask(self, image_id):
         """Generate instance masks for shapes of the given image ID.
         """
-        print(image_id)
         info = self.image_info[image_id]
         image = self.load_image(image_id)
         shapes = np.array(["rectangle"])
@@ -138,7 +135,7 @@ class LabelsDataset(utils.Dataset):
             # Map class names to class IDs.
             class_ids.append(self.class_names.index('rectangle'))
         return mask, np.asarray(class_ids, dtype='int32')
-        
+
     def draw_shape(self, image, val=100, color=(255,0,0)):
         threshold = val
         src_gray = image
@@ -147,9 +144,9 @@ class LabelsDataset(utils.Dataset):
         kernel = np.ones((5, 5),np.uint8)
 
         canny_output = cv2.morphologyEx(canny_output, cv2.MORPH_CLOSE, kernel)
-    
+
         contours, _ = cv2.findContours(canny_output, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    
+
         contours_poly = [None]*len(contours)
         boundRect = [None]*len(contours)
         centers = [None]*len(contours)
@@ -179,39 +176,35 @@ class LabelsDataset(utils.Dataset):
         h = max_y2 - max_y1
         coors = [max_x1, max_y1, max_x2, max_y2]
         return coors, w, h
-       
+
 config = LabelsConfig()
 
 print("Creating train datasets...")
 
 tr_dataset = LabelsDataset()
-tr_dataset.load_labels(TR_IMAGE_DIR, True, config.AUG_SIZE)
+tr_dataset.load_labels(TR_IMAGE_DIR, True, config.AUG_SIZE, config.N_TR_IMAGES)
 tr_dataset.prepare()
 
 print("Creating test datasets...")
 te_dataset = LabelsDataset()
-te_dataset.load_labels(TE_IMAGE_DIR, False, config.AUG_SIZE)
+te_dataset.load_labels(TE_IMAGE_DIR, False, config.AUG_SIZE, config.N_TE_IMAGES)
 te_dataset.prepare()
 
-tr_image_ids = tr_dataset.image_ids #np.random.choice(tr_dataset.image_ids, config.N_TR_IMAGES * config.AUG_SIZE)
-
-te_image_ids = te_dataset.image_ids #np.random.choice(te_dataset.image_ids, config.N_TE_IMAGES * config.AUG_SIZE)
-
-print(tr_dataset.image_ids)
-print(te_dataset.image_ids)
+np.random.shuffle(tr_dataset.image_ids)
+np.random.shuffle(te_dataset.image_ids)
 
 print("Top masks for training dataset")
 
-for image_id in tr_image_ids:
+for image_id in tr_dataset.image_ids:
     image = tr_dataset.load_image(image_id)
     mask, class_ids = tr_dataset.load_mask(image_id)
-    #visualize.display_top_masks(image, mask, class_ids, tr_dataset.class_names)
+    visualize.display_top_masks(image, mask, class_ids, tr_dataset.class_names)
    
 print("Top masks for test dataset")
-for image_id in te_image_ids:
+for image_id in te_dataset.image_ids:
     image = te_dataset.load_image(image_id)
     mask, class_ids = te_dataset.load_mask(image_id)
-    #visualize.display_top_masks(image, mask, class_ids, te_dataset.class_names)
+    visualize.display_top_masks(image, mask, class_ids, te_dataset.class_names)
 
 ################# Train model
 

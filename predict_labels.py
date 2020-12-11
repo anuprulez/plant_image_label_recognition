@@ -31,7 +31,8 @@ from mrcnn.model import mold_image
 # Directory to save logs and trained model
 MODEL_DIR = os.path.join(ROOT_DIR, "logs/")
 
-model_path = "/home/kumara/image_segmentation_plants/plant_image_label_recognition/mrcnn/logs/labels20201209T2238/mask_rcnn_labels_0020.h5"
+model_path = "/home/kumara/image_segmentation_plants/plant_image_label_recognition/mrcnn/logs/labels20201210T1251/mask_rcnn_labels_0005.h5"
+# labels20201210T1251
 # labels20201209T2238
 # labels20201209T1106
 # labels20201207T0924
@@ -86,11 +87,11 @@ model = modellib.MaskRCNN(mode="inference", model_dir=MODEL_DIR, config=config)
 print("Loading weights from ", model_path)
 model.load_weights(model_path, by_name=True)
 
-width = 1024
+width = 840
 height = 1024
 
 def filter_rois(res):
-    threshold = 0.99
+    threshold = 0.95
     rois = list()
     masks = list()
     cls_ids = list()
@@ -108,14 +109,11 @@ def filter_rois(res):
     return res
 
 # Load a random image from the images folder
-file_names = glob.glob(IMAGE_DIR + "*.jpg")
+file_names = glob.glob(IMAGE_DIR + "*.jpeg")
 for fn in file_names:
     image = cv2.imread(fn)
     shape = image.shape
     image = cv2.resize(image, (width, height))
-    #scaled_image = mold_image(image, config)
-    #print(scaled_image.shape)
-    #sample = expand_dims(scaled_image, 0)
     # Run detection
     results = model.detect([image], verbose=1)
     class_names = ["BG", "rectangle"]
