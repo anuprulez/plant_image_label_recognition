@@ -57,10 +57,10 @@ class LabelsConfig(Config):
     # Use a small epoch since the data is simple
     STEPS_PER_EPOCH = 50
     
-    N_TR_IMAGES = 2
-    N_TE_IMAGES = 1
+    N_TR_IMAGES = 2000
+    N_TE_IMAGES = 500
     
-    AUG_SIZE = 2
+    AUG_SIZE = 10
     
     
 
@@ -98,7 +98,6 @@ class LabelsDataset(utils.Dataset):
             else:
                 si_img_path = os.path.join(TE_IMAGE_SI_DIR, si_file_name)
             cv2.imwrite(si_img_path, background_image)
-            print(file_prefix, si_img_path)
             self.add_image("dataset", image_id=file_prefix, path=si_img_path, width=te_wt, height=te_ht)
 
     def load_image(self, image_id):
@@ -193,7 +192,7 @@ te_dataset.prepare()
 np.random.shuffle(tr_dataset.image_ids)
 np.random.shuffle(te_dataset.image_ids)
 
-print("Top masks for training dataset")
+'''print("Top masks for training dataset")
 
 for image_id in tr_dataset.image_ids:
     image = tr_dataset.load_image(image_id)
@@ -204,11 +203,11 @@ print("Top masks for test dataset")
 for image_id in te_dataset.image_ids:
     image = te_dataset.load_image(image_id)
     mask, class_ids = te_dataset.load_mask(image_id)
-    visualize.display_top_masks(image, mask, class_ids, te_dataset.class_names)
+    visualize.display_top_masks(image, mask, class_ids, te_dataset.class_names)'''
 
 ################# Train model
 
-'''print("Loading pretrained model...")
+print("Loading pretrained model...")
 model = modellib.MaskRCNN(mode="training", config=config, model_dir=MODEL_DIR)
 # Load weights trained on MS COCO, but skip layers that
 # are different due to the different number of classes
@@ -220,4 +219,4 @@ model.load_weights(COCO_MODEL_PATH, by_name=True, exclude=["mrcnn_class_logits",
 # layers. You can also pass a regular expression to select
 # which layers to train by name pattern.
 print("Training heads...")
-model.train(tr_dataset, te_dataset, learning_rate=config.LEARNING_RATE, epochs=5, layers='heads')'''
+model.train(tr_dataset, te_dataset, learning_rate=config.LEARNING_RATE, epochs=5, layers='heads')
