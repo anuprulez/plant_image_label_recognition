@@ -33,6 +33,7 @@ TR_IMAGE_DIR = "data/crops/martius/tr/"
 TE_IMAGE_DIR = "data/crops/martius/val/"
 TR_IMAGE_SI_DIR = "data/crops/martius/tr_si/"
 TE_IMAGE_SI_DIR = "data/crops/martius/val_si/"
+TR_IMAGE_BACKGROUND_DIR = "data/crops/martius/original_background/"
 
 # Import Mask RCNN
 sys.path.append(ROOT_DIR)  # To find local version of the library
@@ -41,6 +42,8 @@ from mrcnn import utils
 import mrcnn.model as modellib
 from mrcnn import visualize
 from mrcnn.model import log
+from mrcnn.utils import extract_bboxes
+from mrcnn.visualize import display_instances
 
 
 class LabelsConfig(Config):
@@ -57,11 +60,10 @@ class LabelsConfig(Config):
     # Use a small epoch since the data is simple
     STEPS_PER_EPOCH = 50
     
-    N_TR_IMAGES = 2000
-    N_TE_IMAGES = 500
-    
-    AUG_SIZE = 10
-    
+    N_TR_IMAGES = 5
+    N_TE_IMAGES = 1
+
+    AUG_SIZE = 1
     
 
 class LabelsDataset(utils.Dataset):
@@ -82,23 +84,32 @@ class LabelsDataset(utils.Dataset):
                 image = cv2.imread(img)
                 self.augment_dataset(image, i, channels, aug_size, train)
 
-    def augment_dataset(self, image, file_idx, channels, augment_size=2, train=True, min_w=128, max_w=512, min_h=128, max_h=512, te_wt=840, te_ht=1024):
+    def augment_dataset(self, image, file_idx, channels, augment_size=2, train=True, min_w=128, max_w=512, min_h=128, max_h=512, te_wt=1024, te_ht=1024):
         for aug_idx in range(augment_size):
             width = np.random.randint(min_w, max_w)
             height = np.random.randint(min_h, max_h)
             resized_image = cv2.resize(image, (height, width))
             rand_w = np.random.randint(1, te_ht - width - 1)
             rand_h = np.random.randint(1, te_wt - height - 1)
-            background_image = np.zeros([te_ht, te_wt, channels], dtype=np.uint8)
-            background_image[rand_w:rand_w + width, rand_h:rand_h + height, :] = resized_image
+            bg_file_names = glob.glob(TR_IMAGE_BACKGROUND_DIR + "*.jpg")
+            np.random.shuffle(bg_file_names)
+            bg_image = cv2.imread(bg_file_names[0])
+            resized_bg_image = cv2.resize(bg_image, (te_ht, te_wt))
+            resized_bg_image = cv2.cvtColor(resized_bg_image, cv2.COLOR_BGR2RGB)
+            #print(resized_bg_image.shape)
+            #background_image = np.zeros([te_ht, te_wt, channels], dtype=np.uint8)
+            #background_image[rand_w:rand_w + width, rand_h:rand_h + height, :] = resized_image
+            resized_bg_image[rand_w:rand_w + width, rand_h:rand_h + height, :] = resized_image
+            #plt.imshow(resized_bg_image)
+            #plt.show()
             file_prefix = "{}_{}".format(file_idx, aug_idx)
             si_file_name = "{}.jpg".format(file_prefix)
             if train is True:
                 si_img_path = os.path.join(TR_IMAGE_SI_DIR, si_file_name)
             else:
                 si_img_path = os.path.join(TE_IMAGE_SI_DIR, si_file_name)
-            cv2.imwrite(si_img_path, background_image)
-            self.add_image("dataset", image_id=file_prefix, path=si_img_path, width=te_wt, height=te_ht)
+            cv2.imwrite(si_img_path, resized_bg_image)
+            self.add_image("dataset", image_id=file_prefix, path=si_img_path, width=te_wt, height=te_ht, x1=rand_w, x2=rand_w+width, y1=rand_h, y2=rand_h+height)
 
     def load_image(self, image_id):
         """Generate an image from the specs of the given image ID.
@@ -121,17 +132,23 @@ class LabelsDataset(utils.Dataset):
         info = self.image_info[image_id]
         image = self.load_image(image_id)
         shapes = np.array(["rectangle"])
-        box, w, h = self.draw_shape(image)
+        #box, w, h = self.draw_shape(image)
+        #wt = info["x2"] - info["x1"]
+        #ht = info["y2"] - info["y1"]
         mask = np.zeros([info["height"], info["width"], len(shapes)], dtype=np.uint8)
+        #mask = np.zeros([info["height"], info["width"], len(shapes)], dtype=np.uint8)
         class_ids = list()
         # only one rectangle is considered
-        for i in range(len(shapes)):
-            row_s = box[1]
-            row_e = box[3]
-            col_s = box[0]
-            col_e = box[2]
+        for i in range(len(shapes)): # max_x1, max_y1, max_x2, max_y2
+            row_s = info["x1"] #box[1]
+            row_e = info["x2"]  #box[3]
+            col_s = info["y1"] #box[0]
+            col_e = info["y2"] #box[2]
             mask[row_s:row_e, col_s:col_e, i] = 1
             # Map class names to class IDs.
+            #print(info)
+            #plt.imshow(mask)
+            #plt.show()
             class_ids.append(self.class_names.index('rectangle'))
         return mask, np.asarray(class_ids, dtype='int32')
 
@@ -185,6 +202,7 @@ tr_dataset.load_labels(TR_IMAGE_DIR, True, config.AUG_SIZE, config.N_TR_IMAGES)
 tr_dataset.prepare()
 
 print("Creating test datasets...")
+
 te_dataset = LabelsDataset()
 te_dataset.load_labels(TE_IMAGE_DIR, False, config.AUG_SIZE, config.N_TE_IMAGES)
 te_dataset.prepare()
@@ -192,18 +210,20 @@ te_dataset.prepare()
 np.random.shuffle(tr_dataset.image_ids)
 np.random.shuffle(te_dataset.image_ids)
 
-'''print("Top masks for training dataset")
+print("Top masks for training dataset")
 
 for image_id in tr_dataset.image_ids:
     image = tr_dataset.load_image(image_id)
     mask, class_ids = tr_dataset.load_mask(image_id)
+    bbox = extract_bboxes(mask)
+    #display_instances(image, bbox, mask, class_ids, tr_dataset.class_names)
     visualize.display_top_masks(image, mask, class_ids, tr_dataset.class_names)
-   
-print("Top masks for test dataset")
+
+'''print("Top masks for test dataset")
 for image_id in te_dataset.image_ids:
     image = te_dataset.load_image(image_id)
     mask, class_ids = te_dataset.load_mask(image_id)
-    visualize.display_top_masks(image, mask, class_ids, te_dataset.class_names)'''
+    visualize.display_top_masks(image, mask, class_ids, te_dataset.class_names)
 
 ################# Train model
 
@@ -219,4 +239,4 @@ model.load_weights(COCO_MODEL_PATH, by_name=True, exclude=["mrcnn_class_logits",
 # layers. You can also pass a regular expression to select
 # which layers to train by name pattern.
 print("Training heads...")
-model.train(tr_dataset, te_dataset, learning_rate=config.LEARNING_RATE, epochs=5, layers='heads')
+model.train(tr_dataset, te_dataset, learning_rate=config.LEARNING_RATE, epochs=5, layers='heads')'''
