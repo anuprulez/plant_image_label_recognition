@@ -46,6 +46,13 @@ from mrcnn.utils import extract_bboxes
 from mrcnn.visualize import display_instances
 
 
+def remove_files():
+    dirs = [TR_IMAGE_SI_DIR, TE_IMAGE_SI_DIR]
+    for dr in dirs:
+        bg_file_names = glob.glob(dr + "*.jpg")
+        for f in bg_file_names:
+            os.remove(f)
+
 class LabelsConfig(Config):
     """Configuration for training on the toy shapes dataset.
     Derives from the base Config class and overrides values specific
@@ -63,8 +70,8 @@ class LabelsConfig(Config):
     N_TR_IMAGES = 5
     N_TE_IMAGES = 1
 
-    AUG_SIZE = 1
-    
+    AUG_SIZE = 2
+
 
 class LabelsDataset(utils.Dataset):
     """Create the labels dataset.
@@ -96,12 +103,7 @@ class LabelsDataset(utils.Dataset):
             bg_image = cv2.imread(bg_file_names[0])
             resized_bg_image = cv2.resize(bg_image, (te_ht, te_wt))
             resized_bg_image = cv2.cvtColor(resized_bg_image, cv2.COLOR_BGR2RGB)
-            #print(resized_bg_image.shape)
-            #background_image = np.zeros([te_ht, te_wt, channels], dtype=np.uint8)
-            #background_image[rand_w:rand_w + width, rand_h:rand_h + height, :] = resized_image
             resized_bg_image[rand_w:rand_w + width, rand_h:rand_h + height, :] = resized_image
-            #plt.imshow(resized_bg_image)
-            #plt.show()
             file_prefix = "{}_{}".format(file_idx, aug_idx)
             si_file_name = "{}.jpg".format(file_prefix)
             if train is True:
@@ -132,23 +134,16 @@ class LabelsDataset(utils.Dataset):
         info = self.image_info[image_id]
         image = self.load_image(image_id)
         shapes = np.array(["rectangle"])
-        #box, w, h = self.draw_shape(image)
-        #wt = info["x2"] - info["x1"]
-        #ht = info["y2"] - info["y1"]
         mask = np.zeros([info["height"], info["width"], len(shapes)], dtype=np.uint8)
-        #mask = np.zeros([info["height"], info["width"], len(shapes)], dtype=np.uint8)
         class_ids = list()
         # only one rectangle is considered
-        for i in range(len(shapes)): # max_x1, max_y1, max_x2, max_y2
-            row_s = info["x1"] #box[1]
-            row_e = info["x2"]  #box[3]
-            col_s = info["y1"] #box[0]
-            col_e = info["y2"] #box[2]
+        for i in range(len(shapes)):
+            row_s = info["x1"]
+            row_e = info["x2"]
+            col_s = info["y1"]
+            col_e = info["y2"]
             mask[row_s:row_e, col_s:col_e, i] = 1
             # Map class names to class IDs.
-            #print(info)
-            #plt.imshow(mask)
-            #plt.show()
             class_ids.append(self.class_names.index('rectangle'))
         return mask, np.asarray(class_ids, dtype='int32')
 
@@ -195,6 +190,9 @@ class LabelsDataset(utils.Dataset):
 
 config = LabelsConfig()
 
+print("Deleting old files...")
+remove_files()
+
 print("Creating train datasets...")
 
 tr_dataset = LabelsDataset()
@@ -216,18 +214,20 @@ for image_id in tr_dataset.image_ids:
     image = tr_dataset.load_image(image_id)
     mask, class_ids = tr_dataset.load_mask(image_id)
     bbox = extract_bboxes(mask)
-    #display_instances(image, bbox, mask, class_ids, tr_dataset.class_names)
-    visualize.display_top_masks(image, mask, class_ids, tr_dataset.class_names)
+    display_instances(image, bbox, mask, class_ids, tr_dataset.class_names)
+    #visualize.display_top_masks(image, mask, class_ids, tr_dataset.class_names)
 
-'''print("Top masks for test dataset")
+print("Top masks for test dataset")
 for image_id in te_dataset.image_ids:
     image = te_dataset.load_image(image_id)
     mask, class_ids = te_dataset.load_mask(image_id)
-    visualize.display_top_masks(image, mask, class_ids, te_dataset.class_names)
+    bbox = extract_bboxes(mask)
+    display_instances(image, bbox, mask, class_ids, te_dataset.class_names)
+    #visualize.display_top_masks(image, mask, class_ids, te_dataset.class_names)
 
 ################# Train model
 
-print("Loading pretrained model...")
+'''print("Loading pretrained model...")
 model = modellib.MaskRCNN(mode="training", config=config, model_dir=MODEL_DIR)
 # Load weights trained on MS COCO, but skip layers that
 # are different due to the different number of classes
